@@ -17,11 +17,6 @@ runtimes:
       - "process"
       - "docker"
       - "kube"
-llm_providers:
-  preference:
-    - "gpt-4o"
-    - "gpt-4-turbo"
-    - "anthropic/claude-3-opus-20240229"
 public: True
 icon: https://tinyurl.com/y5u4u7te
 resource_requests:
