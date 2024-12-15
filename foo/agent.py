@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
 from skillpacks import EnvState
+from skillpacks.action_opts import ActionOpt
 from skillpacks.server.models import V1Action
 from surfkit.agent import TaskAgent
 from taskara import Task, TaskStatus
@@ -71,7 +72,7 @@ class Foo(TaskAgent):
         if not isinstance(device, Desktop):
             raise ValueError("Only desktop devices supported")
 
-        self.workflow_model_id = "pbarker/Qwen2-VL-7B-sk-googlesearch-full"
+        self.workflow_model_id = "pbarker/Qwen2-VL-7B-sk-googlesearch-full-500-clean"
         self.workflow_model = ChatModel(model=self.workflow_model_id, provider="vllm")
         self.workflow_model.connect()
 
@@ -277,7 +278,9 @@ class Foo(TaskAgent):
                 result=action_response,
                 agent_id=self.name(),
                 model=self.workflow_model_id,
-                action_opts=actions,
+                action_opts=[
+                    ActionOpt(action=action, prompt=prompt) for action in actions
+                ],
             )
 
             _thread.add_msg(response)
