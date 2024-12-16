@@ -166,6 +166,10 @@ class Foo(TaskAgent):
 
             # Take a screenshot of the desktop and post a message with it
             screenshots = desktop.take_screenshots(count=2)
+            s0 = screenshots[0]
+            width, height = s0.size  # Get the dimensions of the screenshot
+            console.print(f"Screenshot dimensions: {width} x {height}")
+
             task.post_message(
                 "assistant",
                 "current image",
