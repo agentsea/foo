@@ -9,7 +9,7 @@ from devicebay import Device
 from json_repair import repair_json
 from mllm import Prompt as SkillPrompt
 from orign import ChatModel
-from orign.models import ChatResponse, Prompt, SamplingParams
+from orign.models import ChatResponse, Prompt
 from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
@@ -31,6 +31,8 @@ logger: Final = logging.getLogger(__name__)
 logger.setLevel(int(os.getenv("LOG_LEVEL", str(logging.DEBUG))))
 
 console = Console(force_terminal=True)
+
+WORKFLOW_MODEL_ID = "pbarker/Qwen2-VL-7B-sk-airbnb-full-10tsk-237ex-5epoch"
 
 
 class FooConfig(BaseModel):
@@ -72,7 +74,7 @@ class Foo(TaskAgent):
         if not isinstance(device, Desktop):
             raise ValueError("Only desktop devices supported")
 
-        self.workflow_model_id = "pbarker/Qwen2-VL-7B-sk-googlesearch-full-500-clean"
+        self.workflow_model_id = WORKFLOW_MODEL_ID
         self.workflow_model = ChatModel(model=self.workflow_model_id, provider="vllm")
         self.workflow_model.connect()
 
@@ -202,6 +204,9 @@ class Foo(TaskAgent):
 
             ctx += "\n\nPlease return the action you want to take as a raw JSON object."
 
+            console.print("context: ", style="white")
+            console.print(ctx, style="white")
+
             # Craft the message asking the MLLM for an action
             msg = RoleMessage(
                 role="user",
@@ -213,9 +218,9 @@ class Foo(TaskAgent):
             # Make the action selection
             response = self.workflow_model.chat(
                 prompt=Prompt(messages=_thread.to_orign().messages),
-                sampling_params=SamplingParams(
-                    n=4,
-                ),
+                # sampling_params=SamplingParams(
+                #     n=4,
+                # ),
             )
             if not isinstance(response, ChatResponse):
                 raise ValueError(f"Expected a ChatResponse, got: {type(response)}")
