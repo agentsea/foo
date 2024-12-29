@@ -202,10 +202,8 @@ def train() -> None:
     )
 
     # 2) Preprocess them (turn image paths into PIL Images, store them in "image_list")
-    train_dataset = train_dataset.map(
-        preprocess_row, remove_none=True
-    )  # remove_none=True skips None examples
-    eval_dataset = eval_dataset.map(preprocess_row, remove_none=True)
+    train_dataset = train_dataset.map(preprocess_row)
+    eval_dataset = eval_dataset.map(preprocess_row)
 
     print(f"Training dataset size after filtering: {len(train_dataset)}")
     print(f"Evaluation dataset size after filtering: {len(eval_dataset)}")
