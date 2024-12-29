@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import torch
-from datasets import load_dataset
+from datasets import SkipExample, load_dataset
 from huggingface_hub import upload_file
 from PIL import Image, ImageOps
 from transformers import AutoModelForCausalLM, AutoProcessor, Trainer, TrainingArguments
@@ -16,7 +16,7 @@ def load_image_from_path(path: str) -> Image.Image:
     return Image.open(path).convert("RGB")
 
 
-def preprocess_row(example: Dict) -> Optional[Dict]:
+def preprocess_row(example: Dict) -> Dict:
     """
     Convert the 'images' (list of file paths) into actual list of PIL.Image objects,
     storing them in `example["image_list"]`. Also store `prompt_text` and `answer_text`.
@@ -37,7 +37,7 @@ def preprocess_row(example: Dict) -> Optional[Dict]:
     if not pil_images:
         # No valid images found, skip this example
         print("Warning: No valid images in this example, skipping.")
-        return None  # Return None to indicate the example should be skipped
+        raise SkipExample()  # Use SkipExample to skip this example
 
     # Store the valid images and texts in the example
     example["image_list"] = pil_images
@@ -203,16 +203,10 @@ def train() -> None:
 
     # 2) Preprocess them (turn image paths into PIL Images, store them in "image_list")
     train_dataset = train_dataset.map(preprocess_row)
-    train_dataset = train_dataset.filter(lambda example: example is not None)
     eval_dataset = eval_dataset.map(preprocess_row)
-    eval_dataset = eval_dataset.filter(lambda example: example is not None)
 
     print(f"Training dataset size after filtering: {len(train_dataset)}")
     print(f"Evaluation dataset size after filtering: {len(eval_dataset)}")
-
-    # 3) Inspect dataset sizes
-    print(f"Training dataset size: {len(train_dataset)}")
-    print(f"Evaluation dataset size: {len(eval_dataset)}")
 
     # 4) Setup training args
     training_args = TrainingArguments(
