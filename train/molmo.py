@@ -207,6 +207,9 @@ def train() -> None:
     eval_dataset = eval_dataset.map(preprocess_row)
     eval_dataset = eval_dataset.filter(lambda example: example is not None)
 
+    print(f"Training dataset size after filtering: {len(train_dataset)}")
+    print(f"Evaluation dataset size after filtering: {len(eval_dataset)}")
+
     # 3) Inspect dataset sizes
     print(f"Training dataset size: {len(train_dataset)}")
     print(f"Evaluation dataset size: {len(eval_dataset)}")
