@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import torch
 from datasets import SkipExample, load_dataset
+from datasets.utils import SkipExample
 from huggingface_hub import upload_file
 from PIL import Image, ImageOps
 from transformers import AutoModelForCausalLM, AutoProcessor, Trainer, TrainingArguments
@@ -16,11 +17,11 @@ def load_image_from_path(path: str) -> Image.Image:
     return Image.open(path).convert("RGB")
 
 
-def preprocess_row(example: Dict) -> Dict:
+def preprocess_row(example: Dict) -> Optional[Dict]:
     """
     Convert the 'images' (list of file paths) into actual list of PIL.Image objects,
     storing them in `example["image_list"]`. Also store `prompt_text` and `answer_text`.
-    If there are no valid images, skip the example.
+    If there are no valid images, skip the example by returning None.
     """
     img_paths = example.get("images", [])
     pil_images = []
@@ -35,9 +36,9 @@ def preprocess_row(example: Dict) -> Dict:
             continue
 
     if not pil_images:
-        # No valid images found, skip this example
+        # No valid images found, return None to skip this example
         print("Warning: No valid images in this example, skipping.")
-        raise SkipExample()  # Use SkipExample to skip this example
+        return None  # Return None to indicate skipping
 
     # Store the valid images and texts in the example
     example["image_list"] = pil_images
@@ -202,8 +203,10 @@ def train() -> None:
     )
 
     # 2) Preprocess them (turn image paths into PIL Images, store them in "image_list")
-    train_dataset = train_dataset.map(preprocess_row)
-    eval_dataset = eval_dataset.map(preprocess_row)
+    train_dataset = train_dataset.map(
+        preprocess_row, remove_none=True
+    )  # remove_none=True skips None examples
+    eval_dataset = eval_dataset.map(preprocess_row, remove_none=True)
 
     print(f"Training dataset size after filtering: {len(train_dataset)}")
     print(f"Evaluation dataset size after filtering: {len(eval_dataset)}")
