@@ -19,24 +19,18 @@ def load_image_from_path(path: str) -> Image.Image:
 def preprocess_row(example: Dict) -> Dict:
     """
     Convert the 'images' (list of file paths) into actual list of PIL.Image objects,
-    storing them in `example["image_list"]`. Also store `query` and `response` in
-    `prompt_text` and `answer_text`, respectively.
+    storing them in `example["image_list"]`. Also store `prompt_text` and `answer_text`, respectively.
     """
-    # Load each image path in example["images"] into a PIL Image
     img_paths = example.get("images", [])
     pil_images = []
     for path in img_paths:
         if os.path.exists(path):
-            # If local file
+            # If the local file exists, load it
             pil_images.append(load_image_from_path(path))
         else:
-            # Could be a remote URL or missing file
-            # handle accordingly; here we'll just print a warning
+            # Handle missing or remote files
             print(f"Warning: image file not found or not local: {path}")
-            # You can skip it or keep a placeholder
-            # pil_images.append(None)
-            pil_images.append(load_image_from_path(path))
-
+            # Append None or skip the image
     example["image_list"] = pil_images
     example["prompt_text"] = example.get("query", "")
     example["answer_text"] = example.get("response", "")
@@ -84,23 +78,19 @@ def process_batch(
     images_arrays_list = []
     image_idxs_list = []
     for images in images_list:
-        if images and len(images) > 0:
-            image_arrays = []
-            for img in images:
-                # Make sure it's a PIL image
-                if isinstance(img, Image.Image):
-                    img = ImageOps.exif_transpose(img)  # fix orientation
-                    image_arrays.append(np.array(img.convert("RGB")))
-                else:
-                    # If it's None or invalid
-                    image_arrays.append(None)
-            images_arrays_list.append(image_arrays)
-            # For the sake of the example, let's just do -1 placeholders
-            image_idx = [-1] * len(image_arrays)
-            image_idxs_list.append(image_idx)
-        else:
-            images_arrays_list.append([])
-            image_idxs_list.append([])
+        image_arrays = []
+        image_idxs = []
+        for idx, img in enumerate(images):
+            if isinstance(img, Image.Image):
+                img = ImageOps.exif_transpose(img)  # Fix orientation
+                image_arrays.append(np.array(img.convert("RGB")))
+                image_idxs.append(idx)  # Use actual index
+            else:
+                # Skip None images
+                print("Warning: Encountered None image, skipping.")
+                continue
+        images_arrays_list.append(image_arrays)
+        image_idxs_list.append(image_idxs)
 
     # --- Multimodal preprocess each example ---
     # You can tune these kwargs as needed
