@@ -5,8 +5,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import torch
-from datasets import SkipExample, load_dataset
-from datasets.utils import SkipExample
+from datasets import load_dataset
 from huggingface_hub import upload_file
 from PIL import Image, ImageOps
 from transformers import AutoModelForCausalLM, AutoProcessor, Trainer, TrainingArguments
