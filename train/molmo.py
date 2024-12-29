@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 import torch
@@ -16,21 +16,30 @@ def load_image_from_path(path: str) -> Image.Image:
     return Image.open(path).convert("RGB")
 
 
-def preprocess_row(example: Dict) -> Dict:
+def preprocess_row(example: Dict) -> Optional[Dict]:
     """
     Convert the 'images' (list of file paths) into actual list of PIL.Image objects,
-    storing them in `example["image_list"]`. Also store `prompt_text` and `answer_text`, respectively.
+    storing them in `example["image_list"]`. Also store `prompt_text` and `answer_text`.
+    If there are no valid images, skip the example.
     """
     img_paths = example.get("images", [])
     pil_images = []
     for path in img_paths:
         if os.path.exists(path):
-            # If the local file exists, load it
+            # Load the existing local image file
             pil_images.append(load_image_from_path(path))
         else:
-            # Handle missing or remote files
+            # Handle missing or invalid image paths
             print(f"Warning: image file not found or not local: {path}")
-            # Append None or skip the image
+            # Skip this image and continue
+            continue
+
+    if not pil_images:
+        # No valid images found, skip this example
+        print("Warning: No valid images in this example, skipping.")
+        return None  # Return None to indicate the example should be skipped
+
+    # Store the valid images and texts in the example
     example["image_list"] = pil_images
     example["prompt_text"] = example.get("query", "")
     example["answer_text"] = example.get("response", "")
@@ -194,7 +203,9 @@ def train() -> None:
 
     # 2) Preprocess them (turn image paths into PIL Images, store them in "image_list")
     train_dataset = train_dataset.map(preprocess_row)
+    train_dataset = train_dataset.filter(lambda example: example is not None)
     eval_dataset = eval_dataset.map(preprocess_row)
+    eval_dataset = eval_dataset.filter(lambda example: example is not None)
 
     # 3) Inspect dataset sizes
     print(f"Training dataset size: {len(train_dataset)}")
