@@ -6,16 +6,10 @@ from typing import Final, List, Optional, Tuple, Type
 
 from agentdesk import Desktop
 from devicebay import Device
-from json_repair import repair_json
-from mllm import Prompt as SkillPrompt
-from orign import ChatModel
-from orign.models import ChatResponse, Prompt
 from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
-from skillpacks import EnvState
 from skillpacks.action_opts import ActionOpt
-from skillpacks.server.models import V1Action
 from surfkit.agent import TaskAgent
 from taskara import Task, TaskStatus
 from tenacity import (
@@ -23,16 +17,17 @@ from tenacity import (
     retry,
     stop_after_attempt,
 )
-from threadmem import RoleMessage, RoleThread
 from toolfuse.util import AgentUtils
+
+from .actor.base import Actor, Step
+from .actor.oai import OaiActor
+from .actor.swift import SwiftActor
 
 logging.basicConfig(level=logging.INFO)
 logger: Final = logging.getLogger(__name__)
 logger.setLevel(int(os.getenv("LOG_LEVEL", str(logging.DEBUG))))
 
 console = Console(force_terminal=True)
-
-WORKFLOW_MODEL_ID = "pbarker/Qwen2-VL-7B-sk-airbnb-full-10tsk-237ex-5epoch"
 
 
 class FooConfig(BaseModel):
@@ -74,10 +69,6 @@ class Foo(TaskAgent):
         if not isinstance(device, Desktop):
             raise ValueError("Only desktop devices supported")
 
-        self.workflow_model_id = WORKFLOW_MODEL_ID
-        self.workflow_model = ChatModel(model=self.workflow_model_id, provider="vllm")
-        self.workflow_model.connect()
-
         # Add standard agent utils to the device
         device.merge(AgentUtils())
 
@@ -91,18 +82,17 @@ class Foo(TaskAgent):
         screen_size = info["screen_size"]
         console.print(f"Screen size: {screen_size}")
 
-        thread: Optional[RoleThread] = None
-        action: Optional[V1Action] = None
-        state: Optional[EnvState] = None
+        history: List[Step] = []
+
+        # actor = SwiftActor()
+        actor = OaiActor()
 
         # Loop to run actions
         for i in range(max_steps):
             console.print(f"-------step {i + 1}", style="green")
 
             try:
-                thread, done, action, state = self.take_action(
-                    device, task, thread, action, state
-                )
+                step, done = self.take_action(device, task, actor, history)
             except Exception as e:
                 console.print(f"Error: {e}", style="red")
                 task.status = TaskStatus.FAILED
@@ -110,6 +100,9 @@ class Foo(TaskAgent):
                 task.save()
                 task.post_message("assistant", f"❗ Error taking action: {e}")
                 return task
+
+            if step:
+                history.append(step)
 
             if done:
                 console.print("task is done", style="green")
@@ -132,21 +125,21 @@ class Foo(TaskAgent):
     )
     def take_action(
         self,
-        desktop: Desktop,
+        device: Device,
         task: Task,
-        thread: Optional[RoleThread] = None,
-        previous_action: Optional[V1Action] = None,
-        previous_state: Optional[EnvState] = None,
-    ) -> Tuple[Optional[RoleThread], bool, Optional[V1Action], Optional[EnvState]]:
+        actor: Actor,
+        history: List[Step],
+    ) -> Tuple[Optional[Step], bool]:
         """Take an action
 
         Args:
             desktop (Desktop): Desktop to use
             task (str): Task to accomplish
-            thread (Optional[RoleThread]): Role thread for the task
+            actor (Actor): Actor to use
+            history (List[Step]): History of steps taken
 
         Returns:
-            bool: Whether the task is complete
+            Tuple[Optional[Step], bool]: A tuple containing the step taken and whether the task is complete
         """
         try:
             # Check to see if the task has been cancelled
@@ -160,108 +153,37 @@ class Foo(TaskAgent):
                 if task.status == TaskStatus.CANCELING:
                     task.status = TaskStatus.CANCELED
                     task.save()
-                return thread, True, None, None
+                return None, True
 
             console.print("taking action...", style="white")
 
-            _thread = RoleThread()
+            step = actor.act(task, device, history)
 
-            # Take a screenshot of the desktop and post a message with it
-            screenshots = desktop.take_screenshots(count=2)
-            s0 = screenshots[0]
-            width, height = s0.size  # Get the dimensions of the screenshot
-            console.print(f"Screenshot dimensions: {width} x {height}")
-
-            task.post_message(
-                "assistant",
-                "current image",
-                images=screenshots,
-                thread="debug",
-            )
-
-            # Get the current mouse coordinates
-            x, y = desktop.mouse_coordinates()
-            console.print(f"mouse coordinates: ({x}, {y})", style="white")
-
-            ctx = (
-                "You are a helpful assistant operating a computer. "
-                f"You are given a task to complete: '{task.description}' "
-                f"You have the following tools at your disposal: {desktop.json_schema()} "
-                "I am going to provide you with screenshots of the current state of the computer, as well as "
-                "a screenshot of the previous state of the computer, with the action that was taken to get to the current state. "
-                "Using those screenshots, you will decide what action to take next. "
-            )
-
-            images = []
-            if thread and previous_action and previous_state:
-                ctx += f"\n\nThe previous state of the computer was <image> and the previous action was {previous_action.model_dump_json()}"
-                images.append(previous_state.images[0])  # type: ignore
-
-            images.extend(screenshots)
-
-            image_str = "".join(["<image>" for _ in screenshots])
-            ctx += f"\n\nThe current screenshots for the desktops are {image_str}"
-
-            ctx += "\n\nPlease return the action you want to take as a raw JSON object."
-
-            console.print("context: ", style="white")
-            console.print(ctx, style="white")
-
-            # Craft the message asking the MLLM for an action
-            msg = RoleMessage(
-                role="user",
-                text=ctx,
-                images=images,
-            )
-            _thread.add_msg(msg)
-
-            # Make the action selection
-            response = self.workflow_model.chat(
-                prompt=Prompt(messages=_thread.to_orign().messages),
-                # sampling_params=SamplingParams(
-                #     n=4,
-                # ),
-            )
-            if not isinstance(response, ChatResponse):
-                raise ValueError(f"Expected a ChatResponse, got: {type(response)}")
-
-            try:
-                actions = self._parse_response(response)
-                selection = self._select_action(actions)
-                console.print("action selection: ", style="white")
-                console.print(JSON.from_data(selection.model_dump()))
-
-                task.post_message(
-                    "assistant",
-                    f"▶️ Taking action '{selection.name}' with parameters: {selection.parameters}",
-                )
-
-            except Exception as e:
-                console.print(f"Response failed to parse: {e}", style="red")
-                raise
+            if step.task:
+                task = step.task
 
             # The agent will return 'result' if it believes it's finished
-            if selection.name == "result":
+            if step.action.name == "result":
                 console.print("final result: ", style="green")
-                console.print(JSON.from_data(selection.parameters))
+                console.print(JSON.from_data(step.action.parameters))
                 task.post_message(
                     "assistant",
-                    f"✅ I think the task is done, please review the result: {selection.parameters['value']}",
+                    f"✅ I think the task is done, please review the result: {step.action.parameters['value']}",
                 )
                 task.status = TaskStatus.FINISHED
                 task.save()
-                return _thread, True, None, None
+                return step, True
 
             # Find the selected action in the tool
-            action = desktop.find_action(selection.name)
+            action = device.find_action(step.action.name)
             console.print(f"found action: {action}", style="blue")
             if not action:
-                console.print(f"action returned not found: {selection.name}")
+                console.print(f"action returned not found: {step.action.name}")
                 raise SystemError("action not found")
 
             # Take the selected action
             try:
-                action_response = desktop.use(action, **selection.parameters)
+                action_response = device.use(action, **step.action.parameters)
             except Exception as e:
                 raise ValueError(f"Trouble using action: {e}")
 
@@ -271,50 +193,32 @@ class Foo(TaskAgent):
                     "assistant", f"👁️ Result from taking action: {action_response}"
                 )
 
-            response = RoleMessage(role="assistant", text=selection.model_dump_json())
-
-            prompt = SkillPrompt(
-                thread=_thread, response=response, model=self.workflow_model_id
-            )
-            state = EnvState(images=screenshots)
+            opts = None
+            if step.action_opts:
+                opts = [
+                    ActionOpt(action=action, prompt=step.prompt)
+                    for action in step.action_opts
+                ]
 
             # Record the action for feedback and tuning
             task.record_action(
-                state=state,
-                prompt=prompt,
-                action=selection,
-                tool=desktop.ref(),
+                state=step.state,
+                prompt=step.prompt,
+                action=step.action,
+                tool=device.ref(),
                 result=action_response,
                 agent_id=self.name(),
-                model=self.workflow_model_id,
-                action_opts=[
-                    ActionOpt(action=action, prompt=prompt) for action in actions
-                ],
+                model=step.model_id,
+                action_opts=opts,
             )
 
-            _thread.add_msg(response)
-            return _thread, False, selection, state
+            return step, False
 
         except Exception as e:
             print("Exception taking action: ", e)
             traceback.print_exc()
             task.post_message("assistant", f"⚠️ Error taking action: {e} -- retrying...")
             raise e
-
-    def _parse_response(self, response: ChatResponse) -> List[V1Action]:
-        output = []
-        for choice in response.choices:
-            try:
-                obj = repair_json(choice.text, return_objects=True)
-                action = V1Action.model_validate(obj)
-                output.append(action)
-            except Exception as e:
-                print("Error parsing action: ", e)
-                continue
-        return output
-
-    def _select_action(self, actions: List[V1Action]) -> V1Action:
-        return actions[0]
 
     @classmethod
     def supported_devices(cls) -> List[Type[Device]]:
