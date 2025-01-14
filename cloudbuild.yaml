@@ -1,0 +1,21 @@
+steps:
+  # Create Docker Buildx builder
+  - name: 'docker'
+    args: [ 'buildx', 'create', '--name', 'mybuilder', '--use' ]
+
+  # Build and push for multiple architectures
+  - name: 'docker'
+    args:
+      [
+        'buildx', 'build',
+        '--platform', 'linux/arm64,linux/amd64',
+        '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/guisurfer/foo:latest',
+        '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/guisurfer/foo:${SHORT_SHA}',
+        '--push',
+        '.',
+      ]
+
+timeout: "3600s"
+
+options:
+  machineType: "N1_HIGHCPU_8"

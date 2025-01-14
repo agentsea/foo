@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.json import JSON
 from skillpacks.action_opts import ActionOpt
 from surfkit.agent import TaskAgent
+from surfkit.skill import Skill
 from taskara import Task, TaskStatus
 from tenacity import (
     before_sleep_log,
@@ -36,6 +37,17 @@ class FooConfig(BaseModel):
 
 class Foo(TaskAgent):
     """A desktop agent that learns"""
+
+    def learn_skill(
+        self,
+        skill: Skill,
+    ):
+        """Learn a skill
+
+        Args:
+            skill (Skill): The skill
+        """
+        raise NotImplementedError("Subclasses must implement this method")
 
     def solve_task(
         self,
