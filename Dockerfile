@@ -16,6 +16,7 @@ RUN poetry install
 
 
 EXPOSE 9090
+ENV DB_TYPE=sqlite
 
 # Run the application
 CMD ["poetry", "run", "python", "-m", "foo.server"]
