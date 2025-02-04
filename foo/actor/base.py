@@ -3,11 +3,11 @@ from dataclasses import dataclass
 from typing import Generic, List, Optional, TypeVar
 
 from devicebay import Device
-from mllm import Prompt as SkillPrompt
+from orign import V1ChatEvent
+from orign.models import MessageItem
 from rich.console import Console
 from skillpacks import EnvState, V1Action
 from taskara import Task
-from threadmem import RoleThread
 
 console = Console(force_terminal=True)
 
@@ -19,10 +19,10 @@ class Step:
     state: EnvState
     action: V1Action
     action_opts: Optional[List[V1Action]] = None
-    thread: Optional[RoleThread] = None
+    thread: Optional[List[MessageItem]] = None
     task: Optional[Task] = None
     model_id: Optional[str] = None
-    prompt: Optional[SkillPrompt] = None
+    prompt: Optional[V1ChatEvent] = None
 
 
 T = TypeVar("T", bound=Device)
@@ -33,4 +33,8 @@ class Actor(ABC, Generic[T]):
 
     @abstractmethod
     def act(self, task: Task, device: T, history: List[Step]) -> Step:
+        pass
+
+    @abstractmethod
+    def get_ctx(self, task: Task, device: T, history: List[Step]) -> str:
         pass

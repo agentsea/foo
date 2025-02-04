@@ -4,15 +4,19 @@ import time
 import traceback
 from typing import Final, List, Optional, Tuple, Type
 
+import requests
 from agentdesk import Desktop
 from devicebay import Device
+from orign import ReplayBuffer, V1ChatEvent, V1MSSwiftBufferParams
+from orign.models import ChatResponse
 from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
-from skillpacks.action_opts import ActionOpt
+from skillpacks.reviewable import AnnotationReviewable
 from surfkit.agent import TaskAgent
 from surfkit.skill import Skill
 from taskara import Task, TaskStatus
+from taskara.server.models import V1TaskUpdate
 from tenacity import (
     before_sleep_log,
     retry,
@@ -21,8 +25,7 @@ from tenacity import (
 from toolfuse.util import AgentUtils
 
 from .actor.base import Actor, Step
-from .actor.oai import OaiActor
-from .actor.swift import SwiftActor
+from .actor.orign import OrignActor
 
 logging.basicConfig(level=logging.INFO)
 logger: Final = logging.getLogger(__name__)
@@ -47,7 +50,256 @@ class Foo(TaskAgent):
         Args:
             skill (Skill): The skill
         """
-        raise NotImplementedError("Subclasses must implement this method")
+        print("learning skill: ", skill.name)
+
+        if not skill.remote or not skill.token:
+            raise ValueError("Skill remote or token not set")
+
+        actor_adapter = f"{skill.name}-actor"
+        val_adapter = f"{skill.name}-val"
+
+        actor_sft_buffer = ReplayBuffer(
+            name=actor_adapter,
+            vram_request="40Gi",
+            dtype="bfloat16",
+            train_every=50,
+            sample_n=100,
+            sample_strategy="Random",
+            ms_swift_params=V1MSSwiftBufferParams(
+                model="Qwen/Qwen2-VL-7B-Instruct",
+                model_type="qwen2_vl",
+                train_type="lora",
+                deepspeed="zero3",
+                torch_dtype="bfloat16",
+                max_length=16384,
+                val_split_ratio=1.0,
+                num_train_epochs=2,
+                eval_strategy="epoch",
+                save_strategy="epoch",
+                save_total_limit=3,
+                lora_rank=64,
+                lora_alpha=128,
+                size_factor=28,
+                max_pixels=1025000,
+                freeze_vit=True,
+            ),
+        )
+
+        val_sft_buffer = ReplayBuffer(
+            name=val_adapter,
+            vram_request="40Gi",
+            dtype="bfloat16",
+            train_every=50,
+            sample_n=100,
+            sample_strategy="Random",
+            ms_swift_params=V1MSSwiftBufferParams(
+                model="Qwen/Qwen2-VL-7B-Instruct",
+                model_type="qwen2_vl",
+                train_type="lora",
+                deepspeed="zero3",
+                torch_dtype="bfloat16",
+                max_length=16384,
+                val_split_ratio=1.0,
+                num_train_epochs=2,
+                eval_strategy="epoch",
+                save_strategy="epoch",
+                save_total_limit=3,
+                lora_rank=64,
+                lora_alpha=128,
+                size_factor=28,
+                max_pixels=1025000,
+                freeze_vit=True,
+            ),
+        )
+
+        for task in skill.tasks:
+            print("\n----\nchecking task: ", task.id)
+
+            if "foo/train" in task.labels:
+                console.print("task already trained", style="white")
+                continue
+
+            if not task.episode:
+                console.print("no episode", style="red")
+                continue
+
+            for i, action in enumerate(task.episode.actions):
+                console.print("action: ", action, "\n\n")
+
+                approved = False
+                action_correction = None
+                for review in action.reviews:
+                    if review.approved and review.reviewer_type == "human":
+                        approved = True
+                        action_correction = review.correction
+                        break
+                console.print("approved: ", approved)
+                console.print("action_correction: ", action_correction)
+
+                if "foo/train" in action.metadata:
+                    console.print("skipping train", style="white")
+                    continue
+
+                if not action.prompt:
+                    console.print("no prompt", style="white")
+                    continue
+
+                if not isinstance(action.prompt, ChatResponse):
+                    console.print("not a chat response", style="white")
+                    continue
+
+                prompt: V1ChatEvent = action.prompt  # type: ignore
+                if not prompt.request.prompt:
+                    console.print("no prompt", style="white")
+                    continue
+
+                if not prompt.request.prompt.messages:
+                    console.print("no messages", style="red")
+                    continue
+
+                if not prompt.request.prompt.messages[0].content or not isinstance(
+                    prompt.request.prompt.messages[0].content, list
+                ):
+                    console.print("no content", style="red")
+                    continue
+
+                if not prompt.request.prompt.messages[0].content[0].text:
+                    console.print("no text", style="red")
+                    continue
+
+                if not prompt.request.prompt.messages[0].content[1].image_url:
+                    console.print("no image url", style="red")
+                    continue
+
+                content = prompt.request.prompt.messages[0].content[0].text
+                image_url = prompt.request.prompt.messages[0].content[1].image_url
+
+                reason = None
+                reason_update = None
+
+                validation = None
+                validation_update = None
+                for reviewable in action.reviewables:
+                    if isinstance(reviewable, AnnotationReviewable):
+                        if reviewable.key == "reason":
+                            reason = reviewable.value
+                            for review in reviewable.reviews:
+                                if (
+                                    review.correction
+                                    and review.reviewer_type == "human"
+                                ):
+                                    reason_update = review.correction
+                                    break
+                        elif reviewable.key == "validation":
+                            validation = reviewable.value
+                            for review in reviewable.reviews:
+                                if (
+                                    review.correction
+                                    and review.reviewer_type == "human"
+                                ):
+                                    validation_update = review.correction
+                                    break
+
+                console.print("reason: ", reason)
+                console.print("validation: ", validation)
+
+                console.print("reason_update: ", reason_update)
+                console.print("validation_update: ", validation_update)
+
+                if not reason:
+                    console.print("no reason", style="red")
+                    continue
+
+                if approved:
+                    response_reason = reason
+                    if reason_update:
+                        response_reason = reason_update
+
+                    response = f"<think>{response_reason}</think><answer>{action.action.model_dump_json()}</answer>"
+
+                    swift_prompt = {
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": content + " <image>",
+                            },
+                            {
+                                "role": "assistant",
+                                "content": response,
+                            },
+                        ],
+                        "images": [image_url],
+                    }
+
+                    console.print("adding to actor buffer: ", swift_prompt)
+                    console.print("orignal prompt: ", prompt.model_dump())
+
+                    actor_sft_buffer.send([swift_prompt])
+
+                if validation:
+                    val_ctx = (
+                        "You are a helpful assistant judging if actions taken on a computer are correct. \n"
+                        f"You are given a task to complete: '{task.description}'\n"
+                        "You just took an action to complete that task. \n"
+                        f"The action was: {action.action.model_dump_json()}\n"
+                        "The first image I've provided you is the state of the computer before the action was taken, "
+                        "and the second image is the state of the computer after the action was taken.\n"
+                        "Using those images, you will decide if the action taken is correct.\n"
+                        "Please return your decision in the format <think>...</think><answer>...</answer>\n"
+                        "As an answer, please return 'yes' if the action was correct or 'no' if it was incorrect <image> <image>"
+                    )
+
+                    approved_text = "yes" if approved else "no"
+
+                    response_val = validation
+                    if validation_update:
+                        response_val = validation_update
+
+                    response = (
+                        f"<think>{response_val}</think><answer>{approved_text}</answer>"
+                    )
+
+                    if i + 1 < len(task.episode.actions):
+                        next_action = task.episode.actions[i + 1]
+                    else:
+                        console.print("no next action", style="red")
+                        continue
+                    if not next_action.state.images:
+                        console.print("no next state images", style="red")
+                        continue
+
+                    end_state = next_action.state.images[0]
+
+                    val_swift_prompt = {
+                        "messages": [
+                            {"role": "user", "content": val_ctx},
+                            {"role": "assistant", "content": response},
+                        ],
+                        "images": [image_url, end_state],
+                    }
+                    console.print("adding to val buffer: ", val_swift_prompt)
+
+                    val_sft_buffer.send([val_swift_prompt])
+
+            console.print(f"labeling task as trained: {task.id}")
+            self.label_trained(skill.remote, skill.token, task)
+            console.print("labeled task as trained")
+
+    def label_trained(self, remote: str, token: str, task: Task) -> None:
+        """Label a task as trained
+
+        Args:
+            task (Task): The task
+        """
+        update = V1TaskUpdate(
+            set_labels={"foo/train": "true"},
+        )
+        resp = requests.put(
+            f"{remote}/v1/tasks/{task.id}",
+            json=update.model_dump(),
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        resp.raise_for_status()
 
     def solve_task(
         self,
@@ -96,8 +348,7 @@ class Foo(TaskAgent):
 
         history: List[Step] = []
 
-        # actor = SwiftActor()
-        actor = OaiActor()
+        actor = self.get_actor()
 
         # Loop to run actions
         for i in range(max_steps):
@@ -174,8 +425,8 @@ class Foo(TaskAgent):
             if step.task:
                 task = step.task
 
-            # The agent will return 'result' if it believes it's finished
-            if step.action.name == "result":
+            # The agent will return 'end' if it believes it's finished
+            if step.action.name == "end":
                 console.print("final result: ", style="green")
                 console.print(JSON.from_data(step.action.parameters))
                 task.post_message(
@@ -205,13 +456,6 @@ class Foo(TaskAgent):
                     "assistant", f"👁️ Result from taking action: {action_response}"
                 )
 
-            opts = None
-            if step.action_opts:
-                opts = [
-                    ActionOpt(action=action, prompt=step.prompt)
-                    for action in step.action_opts
-                ]
-
             # Record the action for feedback and tuning
             task.record_action(
                 state=step.state,
@@ -221,7 +465,6 @@ class Foo(TaskAgent):
                 result=action_response,
                 agent_id=self.name(),
                 model=step.model_id,
-                action_opts=opts,
             )
 
             return step, False
@@ -231,6 +474,9 @@ class Foo(TaskAgent):
             traceback.print_exc()
             task.post_message("assistant", f"⚠️ Error taking action: {e} -- retrying...")
             raise e
+
+    def get_actor(self) -> Actor:
+        return OrignActor()
 
     @classmethod
     def supported_devices(cls) -> List[Type[Device]]:

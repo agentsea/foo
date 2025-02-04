@@ -15,11 +15,11 @@ pydantic = "^2.6.3"
 requests = "^2.31.0"
 fastapi = {version = "^0.109", extras = ["all"]}
 json-repair = "^0.30.2"
-orign = "^0.1.13"
 threadmem = "^0.2.37"
 taskara = "^0.1.171"
 openai = "^1.59.3"
-surfkit = "^0.1.311"
+orign = "^0.1.26"
+surfkit = "^0.1.326"
 
 
 [tool.poetry.group.dev.dependencies]
