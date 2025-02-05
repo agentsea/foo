@@ -41,19 +41,21 @@ class FooConfig(BaseModel):
 class Foo(TaskAgent):
     """A desktop agent that learns"""
 
-    def learn_skill(
+    def learn_task(
         self,
+        task: Task,
         skill: Skill,
     ):
-        """Learn a skill
+        """Learn a task
 
         Args:
-            skill (Skill): The skill
+            task (Task): The task
+            skill (Skill): The associated skill
         """
-        print("learning skill: ", skill.name)
+        print("learning task: ", task.id)
 
-        if not skill.remote or not skill.token:
-            raise ValueError("Skill remote or token not set")
+        if not task.remote or not task.auth_token:
+            raise ValueError("Task remote or token not set")
 
         actor_adapter = f"{skill.name}-actor"
         val_adapter = f"{skill.name}-val"
@@ -112,194 +114,171 @@ class Foo(TaskAgent):
             ),
         )
 
-        for task in skill.tasks:
-            print("\n----\nchecking task: ", task.id)
+        print("\n----\nchecking task: ", task.id)
 
-            if "foo/train" in task.labels:
-                console.print("task already trained", style="white")
+        if "foo/train" in task.labels:
+            console.print("task already trained", style="white")
+            raise ValueError("Task already trained")
+
+        if not task.episode:
+            console.print("no episode", style="red")
+            raise ValueError("Task has no episode")
+
+        for i, action in enumerate(task.episode.actions):
+            console.print("action: ", action, "\n\n")
+
+            approved = False
+            action_correction = None
+            for review in action.reviews:
+                if review.approved and review.reviewer_type == "human":
+                    approved = True
+                    action_correction = review.correction
+                    break
+            console.print("approved: ", approved)
+            console.print("action_correction: ", action_correction)
+
+            if "foo/train" in action.metadata:
+                console.print("skipping train", style="white")
                 continue
 
-            if not task.episode:
-                console.print("no episode", style="red")
+            if not action.prompt:
+                console.print("no prompt", style="white")
                 continue
 
-            for i, action in enumerate(task.episode.actions):
-                console.print("action: ", action, "\n\n")
+            if not isinstance(action.prompt, ChatResponse):
+                console.print("not a chat response", style="white")
+                continue
 
-                approved = False
-                action_correction = None
-                for review in action.reviews:
-                    if review.approved and review.reviewer_type == "human":
-                        approved = True
-                        action_correction = review.correction
-                        break
-                console.print("approved: ", approved)
-                console.print("action_correction: ", action_correction)
+            prompt: V1ChatEvent = action.prompt  # type: ignore
+            if not prompt.request.prompt:
+                console.print("no prompt", style="white")
+                continue
 
-                if "foo/train" in action.metadata:
-                    console.print("skipping train", style="white")
+            if not prompt.request.prompt.messages:
+                console.print("no messages", style="red")
+                continue
+
+            if not prompt.request.prompt.messages[0].content or not isinstance(
+                prompt.request.prompt.messages[0].content, list
+            ):
+                console.print("no content", style="red")
+                continue
+
+            if not prompt.request.prompt.messages[0].content[0].text:
+                console.print("no text", style="red")
+                continue
+
+            if not prompt.request.prompt.messages[0].content[1].image_url:
+                console.print("no image url", style="red")
+                continue
+
+            content = prompt.request.prompt.messages[0].content[0].text
+            image_url = prompt.request.prompt.messages[0].content[1].image_url
+
+            reason = None
+            reason_update = None
+
+            validation = None
+            validation_update = None
+            for reviewable in action.reviewables:
+                if isinstance(reviewable, AnnotationReviewable):
+                    if reviewable.key == "reason":
+                        reason = reviewable.value
+                        for review in reviewable.reviews:
+                            if review.correction and review.reviewer_type == "human":
+                                reason_update = review.correction
+                                break
+                    elif reviewable.key == "validation":
+                        validation = reviewable.value
+                        for review in reviewable.reviews:
+                            if review.correction and review.reviewer_type == "human":
+                                validation_update = review.correction
+                                break
+
+            console.print("reason: ", reason)
+            console.print("validation: ", validation)
+
+            console.print("reason_update: ", reason_update)
+            console.print("validation_update: ", validation_update)
+
+            if not reason:
+                console.print("no reason", style="red")
+                continue
+
+            if approved:
+                response_reason = reason
+                if reason_update:
+                    response_reason = reason_update
+
+                response = f"<think>{response_reason}</think><answer>{action.action.model_dump_json()}</answer>"
+
+                swift_prompt = {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": content + " <image>",
+                        },
+                        {
+                            "role": "assistant",
+                            "content": response,
+                        },
+                    ],
+                    "images": [image_url],
+                }
+
+                console.print("adding to actor buffer: ", swift_prompt)
+                console.print("orignal prompt: ", prompt.model_dump())
+
+                actor_sft_buffer.send([swift_prompt])
+
+            if validation:
+                val_ctx = (
+                    "You are a helpful assistant judging if actions taken on a computer are correct. \n"
+                    f"You are given a task to complete: '{task.description}'\n"
+                    "You just took an action to complete that task. \n"
+                    f"The action was: {action.action.model_dump_json()}\n"
+                    "The first image I've provided you is the state of the computer before the action was taken, "
+                    "and the second image is the state of the computer after the action was taken.\n"
+                    "Using those images, you will decide if the action taken is correct.\n"
+                    "Please return your decision in the format <think>...</think><answer>...</answer>\n"
+                    "As an answer, please return 'yes' if the action was correct or 'no' if it was incorrect <image> <image>"
+                )
+
+                approved_text = "yes" if approved else "no"
+
+                response_val = validation
+                if validation_update:
+                    response_val = validation_update
+
+                response = (
+                    f"<think>{response_val}</think><answer>{approved_text}</answer>"
+                )
+
+                if i + 1 < len(task.episode.actions):
+                    next_action = task.episode.actions[i + 1]
+                else:
+                    console.print("no next action", style="red")
+                    continue
+                if not next_action.state.images:
+                    console.print("no next state images", style="red")
                     continue
 
-                if not action.prompt:
-                    console.print("no prompt", style="white")
-                    continue
+                end_state = next_action.state.images[0]
 
-                if not isinstance(action.prompt, ChatResponse):
-                    console.print("not a chat response", style="white")
-                    continue
+                val_swift_prompt = {
+                    "messages": [
+                        {"role": "user", "content": val_ctx},
+                        {"role": "assistant", "content": response},
+                    ],
+                    "images": [image_url, end_state],
+                }
+                console.print("adding to val buffer: ", val_swift_prompt)
 
-                prompt: V1ChatEvent = action.prompt  # type: ignore
-                if not prompt.request.prompt:
-                    console.print("no prompt", style="white")
-                    continue
+                val_sft_buffer.send([val_swift_prompt])
 
-                if not prompt.request.prompt.messages:
-                    console.print("no messages", style="red")
-                    continue
-
-                if not prompt.request.prompt.messages[0].content or not isinstance(
-                    prompt.request.prompt.messages[0].content, list
-                ):
-                    console.print("no content", style="red")
-                    continue
-
-                if not prompt.request.prompt.messages[0].content[0].text:
-                    console.print("no text", style="red")
-                    continue
-
-                if not prompt.request.prompt.messages[0].content[1].image_url:
-                    console.print("no image url", style="red")
-                    continue
-
-                content = prompt.request.prompt.messages[0].content[0].text
-                image_url = prompt.request.prompt.messages[0].content[1].image_url
-
-                reason = None
-                reason_update = None
-
-                validation = None
-                validation_update = None
-                for reviewable in action.reviewables:
-                    if isinstance(reviewable, AnnotationReviewable):
-                        if reviewable.key == "reason":
-                            reason = reviewable.value
-                            for review in reviewable.reviews:
-                                if (
-                                    review.correction
-                                    and review.reviewer_type == "human"
-                                ):
-                                    reason_update = review.correction
-                                    break
-                        elif reviewable.key == "validation":
-                            validation = reviewable.value
-                            for review in reviewable.reviews:
-                                if (
-                                    review.correction
-                                    and review.reviewer_type == "human"
-                                ):
-                                    validation_update = review.correction
-                                    break
-
-                console.print("reason: ", reason)
-                console.print("validation: ", validation)
-
-                console.print("reason_update: ", reason_update)
-                console.print("validation_update: ", validation_update)
-
-                if not reason:
-                    console.print("no reason", style="red")
-                    continue
-
-                if approved:
-                    response_reason = reason
-                    if reason_update:
-                        response_reason = reason_update
-
-                    response = f"<think>{response_reason}</think><answer>{action.action.model_dump_json()}</answer>"
-
-                    swift_prompt = {
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": content + " <image>",
-                            },
-                            {
-                                "role": "assistant",
-                                "content": response,
-                            },
-                        ],
-                        "images": [image_url],
-                    }
-
-                    console.print("adding to actor buffer: ", swift_prompt)
-                    console.print("orignal prompt: ", prompt.model_dump())
-
-                    actor_sft_buffer.send([swift_prompt])
-
-                if validation:
-                    val_ctx = (
-                        "You are a helpful assistant judging if actions taken on a computer are correct. \n"
-                        f"You are given a task to complete: '{task.description}'\n"
-                        "You just took an action to complete that task. \n"
-                        f"The action was: {action.action.model_dump_json()}\n"
-                        "The first image I've provided you is the state of the computer before the action was taken, "
-                        "and the second image is the state of the computer after the action was taken.\n"
-                        "Using those images, you will decide if the action taken is correct.\n"
-                        "Please return your decision in the format <think>...</think><answer>...</answer>\n"
-                        "As an answer, please return 'yes' if the action was correct or 'no' if it was incorrect <image> <image>"
-                    )
-
-                    approved_text = "yes" if approved else "no"
-
-                    response_val = validation
-                    if validation_update:
-                        response_val = validation_update
-
-                    response = (
-                        f"<think>{response_val}</think><answer>{approved_text}</answer>"
-                    )
-
-                    if i + 1 < len(task.episode.actions):
-                        next_action = task.episode.actions[i + 1]
-                    else:
-                        console.print("no next action", style="red")
-                        continue
-                    if not next_action.state.images:
-                        console.print("no next state images", style="red")
-                        continue
-
-                    end_state = next_action.state.images[0]
-
-                    val_swift_prompt = {
-                        "messages": [
-                            {"role": "user", "content": val_ctx},
-                            {"role": "assistant", "content": response},
-                        ],
-                        "images": [image_url, end_state],
-                    }
-                    console.print("adding to val buffer: ", val_swift_prompt)
-
-                    val_sft_buffer.send([val_swift_prompt])
-
-            console.print(f"labeling task as trained: {task.id}")
-            self.label_trained(skill.remote, skill.token, task)
-            console.print("labeled task as trained")
-
-    def label_trained(self, remote: str, token: str, task: Task) -> None:
-        """Label a task as trained
-
-        Args:
-            task (Task): The task
-        """
-        update = V1TaskUpdate(
-            set_labels={"foo/train": "true"},
-        )
-        resp = requests.put(
-            f"{remote}/v1/tasks/{task.id}",
-            json=update.model_dump(),
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        resp.raise_for_status()
+        console.print(f"labeling task as trained: {task.id}")
+        self.label_trained(task.remote, task.auth_token, task)
+        console.print("labeled task as trained")
 
     def solve_task(
         self,
@@ -477,6 +456,22 @@ class Foo(TaskAgent):
 
     def get_actor(self) -> Actor:
         return OrignActor()
+
+    def label_trained(self, remote: str, token: str, task: Task) -> None:
+        """Label a task as trained
+
+        Args:
+            task (Task): The task
+        """
+        update = V1TaskUpdate(
+            set_labels={"foo/train": "true"},
+        )
+        resp = requests.put(
+            f"{remote}/v1/tasks/{task.id}",
+            json=update.model_dump(),
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        resp.raise_for_status()
 
     @classmethod
     def supported_devices(cls) -> List[Type[Device]]:

@@ -1,7 +1,7 @@
 
 [tool.poetry]
 name = "Foo"
-version = "0.1.0"
+version = "0.1.1"
 description = "AI agent for An agent that can learn any task"
 authors = ["Patrick Barker <patrickbarkerco@gmail.com>"]
 license = "MIT"
@@ -19,7 +19,7 @@ threadmem = "^0.2.37"
 taskara = "^0.1.171"
 openai = "^1.59.3"
 orign = "^0.1.26"
-surfkit = "^0.1.326"
+surfkit = "^0.1.332"
 
 
 [tool.poetry.group.dev.dependencies]
