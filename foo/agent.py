@@ -57,6 +57,12 @@ class Foo(TaskAgent):
         if not task.remote or not task.auth_token:
             raise ValueError("Task remote or token not set")
 
+        console.print(f"labeling task as training: {task.id}")
+        self.label_task(
+            task.remote, task.auth_token, task, "foo/train/status", "training"
+        )
+        console.print("labeled task as training")
+
         actor_adapter = f"{skill.name}-actor"
         val_adapter = f"{skill.name}-val"
 
@@ -276,8 +282,11 @@ class Foo(TaskAgent):
 
                 val_sft_buffer.send([val_swift_prompt])
 
+        # TODO: this may need to happen outside of this method
         console.print(f"labeling task as trained: {task.id}")
-        self.label_trained(task.remote, task.auth_token, task)
+        self.label_task(
+            task.remote, task.auth_token, task, "foo/train/status", "finished"
+        )
         console.print("labeled task as trained")
 
     def solve_task(
@@ -457,14 +466,16 @@ class Foo(TaskAgent):
     def get_actor(self) -> Actor:
         return OrignActor()
 
-    def label_trained(self, remote: str, token: str, task: Task) -> None:
+    def label_task(
+        self, remote: str, token: str, task: Task, key: str, value: str
+    ) -> None:
         """Label a task as trained
 
         Args:
             task (Task): The task
         """
         update = V1TaskUpdate(
-            set_labels={"foo/train": "true"},
+            set_labels={key: value},
         )
         resp = requests.put(
             f"{remote}/v1/tasks/{task.id}",
