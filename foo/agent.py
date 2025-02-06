@@ -57,12 +57,6 @@ class Foo(TaskAgent):
         if not task.remote or not task.auth_token:
             raise ValueError("Task remote or token not set")
 
-        console.print(f"labeling task as training: {task.id}")
-        self.label_task(
-            task.remote, task.auth_token, task, "foo/train/status", "training"
-        )
-        console.print("labeled task as training")
-
         actor_adapter = f"{skill.name}-actor"
         val_adapter = f"{skill.name}-val"
 
@@ -122,7 +116,7 @@ class Foo(TaskAgent):
 
         print("\n----\nchecking task: ", task.id)
 
-        if "foo/train" in task.labels:
+        if "foo/train/status" in task.labels:
             console.print("task already trained", style="white")
             raise ValueError("Task already trained")
 
@@ -143,7 +137,7 @@ class Foo(TaskAgent):
             console.print("approved: ", approved)
             console.print("action_correction: ", action_correction)
 
-            if "foo/train" in action.metadata:
+            if "foo/train/status" in action.metadata:
                 console.print("skipping train", style="white")
                 continue
 
@@ -281,13 +275,6 @@ class Foo(TaskAgent):
                 console.print("adding to val buffer: ", val_swift_prompt)
 
                 val_sft_buffer.send([val_swift_prompt])
-
-        # TODO: this may need to happen outside of this method
-        console.print(f"labeling task as trained: {task.id}")
-        self.label_task(
-            task.remote, task.auth_token, task, "foo/train/status", "finished"
-        )
-        console.print("labeled task as trained")
 
     def solve_task(
         self,

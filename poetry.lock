@@ -367,17 +367,17 @@ six = "*"
 
 [[package]]
 name = "boto3"
-version = "1.36.14"
+version = "1.36.15"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "boto3-1.36.14-py3-none-any.whl", hash = "sha256:e2dab15944c3f517c88850d60b07f2f6fd3bc69aa51c47670e4f45d62a8c41fd"},
-    {file = "boto3-1.36.14.tar.gz", hash = "sha256:4b0b8dd593b95f32a5a761dee65094423fbd06a4ad09f26b2e6c80493139569f"},
+    {file = "boto3-1.36.15-py3-none-any.whl", hash = "sha256:b218092b08ce15fe29b2358345f4ccb812a2377a5e9bccd49e391a5976a24202"},
+    {file = "boto3-1.36.15.tar.gz", hash = "sha256:721d689ebd07a9a95f904356bd97f92032d8006a54eea25316ba55a7585ca7e9"},
 ]
 
 [package.dependencies]
-botocore = ">=1.36.14,<1.37.0"
+botocore = ">=1.36.15,<1.37.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.11.0,<0.12.0"
 
@@ -386,13 +386,13 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "boto3-stubs"
-version = "1.36.14"
-description = "Type annotations for boto3 1.36.14 generated with mypy-boto3-builder 8.9.0"
+version = "1.36.15"
+description = "Type annotations for boto3 1.36.15 generated with mypy-boto3-builder 8.9.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "boto3_stubs-1.36.14-py3-none-any.whl", hash = "sha256:dcde60b21a4026719b82b7f4679ecd9af9372b3d0c9a7f45f1cf2c496bcf19b4"},
-    {file = "boto3_stubs-1.36.14.tar.gz", hash = "sha256:9eccdee8091b095a8ce5119b825dccba73555d88a813636b95c3ea2e57186e4f"},
+    {file = "boto3_stubs-1.36.15-py3-none-any.whl", hash = "sha256:0768bab3b03d9bcf7e1345eea881cd2d5ab17e41f21d63dac2660ee9438e3557"},
+    {file = "boto3_stubs-1.36.15.tar.gz", hash = "sha256:557562358f6d61b2ff36384f6d391ecc8211b69b2f5110eed3f689449dfa8024"},
 ]
 
 [package.dependencies]
@@ -449,7 +449,7 @@ bedrock-data-automation-runtime = ["mypy-boto3-bedrock-data-automation-runtime (
 bedrock-runtime = ["mypy-boto3-bedrock-runtime (>=1.36.0,<1.37.0)"]
 billing = ["mypy-boto3-billing (>=1.36.0,<1.37.0)"]
 billingconductor = ["mypy-boto3-billingconductor (>=1.36.0,<1.37.0)"]
-boto3 = ["boto3 (==1.36.14)"]
+boto3 = ["boto3 (==1.36.15)"]
 braket = ["mypy-boto3-braket (>=1.36.0,<1.37.0)"]
 budgets = ["mypy-boto3-budgets (>=1.36.0,<1.37.0)"]
 ce = ["mypy-boto3-ce (>=1.36.0,<1.37.0)"]
@@ -812,13 +812,13 @@ xray = ["mypy-boto3-xray (>=1.36.0,<1.37.0)"]
 
 [[package]]
 name = "botocore"
-version = "1.36.14"
+version = "1.36.15"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "botocore-1.36.14-py3-none-any.whl", hash = "sha256:546d0c071e9c8aeaca399d71bec414abe6434460f7d6640cbd92d4b1c3eb443e"},
-    {file = "botocore-1.36.14.tar.gz", hash = "sha256:53feff270078c23ba852fb2638fde6c5f74084cfc019dd5433e865cd04065c60"},
+    {file = "botocore-1.36.15-py3-none-any.whl", hash = "sha256:fe0f8d786029125f4c66a30b1d81a551f667b0915dac843604ffa0652c5ff475"},
+    {file = "botocore-1.36.15.tar.gz", hash = "sha256:ab8e69930ef6c42784eb2dee6c0256627ca6bba57730ebe3056179d28aa63d44"},
 ]
 
 [package.dependencies]
@@ -831,13 +831,13 @@ crt = ["awscrt (==0.23.8)"]
 
 [[package]]
 name = "botocore-stubs"
-version = "1.36.14"
+version = "1.36.15"
 description = "Type annotations and code completion for botocore"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "botocore_stubs-1.36.14-py3-none-any.whl", hash = "sha256:58f8e6eb37427b7bb81aa24984b10c90d124526b2ba741ebbe7d6e5690454ad0"},
-    {file = "botocore_stubs-1.36.14.tar.gz", hash = "sha256:54c7b6fe68d6e2a1eac827b1c0525554509a3481ed6ad5a0f4f2c487e00768d2"},
+    {file = "botocore_stubs-1.36.15-py3-none-any.whl", hash = "sha256:46730e2ae7352db23089c58287cae88c034f11235dffec8f4f882b789e18262e"},
+    {file = "botocore_stubs-1.36.15.tar.gz", hash = "sha256:d4852bafdf1f577c588f01334fbab4bbf43e61ee80651c218b482fdc6534d1a7"},
 ]
 
 [package.dependencies]
@@ -4721,13 +4721,13 @@ full = ["httpx (>=0.22.0)", "itsdangerous", "jinja2", "python-multipart (>=0.0.7
 
 [[package]]
 name = "surfkit"
-version = "0.1.332"
+version = "0.1.334"
 description = "A toolkit for building AI agents that use devices"
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "surfkit-0.1.332-py3-none-any.whl", hash = "sha256:b053dbf55ebe9a1aa2589d55a5df669fd48362230ae0e3e6b788de71d3aaff8d"},
-    {file = "surfkit-0.1.332.tar.gz", hash = "sha256:d0894a358fccfa56a9362cbc76845c9ccdd25e7a8ca5c5d293fecf608fb6b828"},
+    {file = "surfkit-0.1.334-py3-none-any.whl", hash = "sha256:7081ea4028afafab283ed7fc9f87f81b87c03ce199aba27db6104ec485b32465"},
+    {file = "surfkit-0.1.334.tar.gz", hash = "sha256:3613fdff3d170b7a736141181f73bb15b6d80ba44996145c4643e894e34fd2ba"},
 ]
 
 [package.dependencies]
@@ -5633,4 +5633,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "0e81b1828ea5dfa5f4019f800d29f2cb0f4efca2c64482e8cffaad6d967924de"
+content-hash = "c3efcc3165c24d0be82eed8156b6d01bbe34bf3a8abbee7fa015874a5c4b1870"
