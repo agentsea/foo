@@ -68,8 +68,8 @@ class Foo(TaskAgent):
             sample_n=100,
             sample_strategy="Random",
             ms_swift_params=V1MSSwiftBufferParams(
-                model="Qwen/Qwen2-VL-7B-Instruct",
-                model_type="qwen2_vl",
+                model="Qwen/Qwen2.5-VL-7B-Instruct",
+                model_type="qwen2_5_vl",
                 train_type="lora",
                 deepspeed="zero3",
                 torch_dtype="bfloat16",
@@ -95,8 +95,8 @@ class Foo(TaskAgent):
             sample_n=100,
             sample_strategy="Random",
             ms_swift_params=V1MSSwiftBufferParams(
-                model="Qwen/Qwen2-VL-7B-Instruct",
-                model_type="qwen2_vl",
+                model="Qwen/Qwen2.5-VL-7B-Instruct",
+                model_type="qwen2_5_vl",
                 train_type="lora",
                 deepspeed="zero3",
                 torch_dtype="bfloat16",

@@ -26,7 +26,7 @@ class OrignActor(Actor[Desktop]):
     """An actor that uses ms-swift and orign"""
 
     def __init__(self, model: Optional[str] = None):
-        self.workflow_model_id = model or "pbarker/Airbnb-CB0.1-50tsk-3epoch"
+        self.workflow_model_id = model or "Qwen/Qwen2.5-VL-7B-Instruct"
         self.workflow_model = ChatModel(model=self.workflow_model_id, provider="vllm")
         self.workflow_model.connect()
 
