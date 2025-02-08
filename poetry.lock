@@ -4716,13 +4716,13 @@ full = ["httpx (>=0.22.0)", "itsdangerous", "jinja2", "python-multipart (>=0.0.7
 
 [[package]]
 name = "surfkit"
-version = "0.1.341"
+version = "0.1.342"
 description = "A toolkit for building AI agents that use devices"
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "surfkit-0.1.341-py3-none-any.whl", hash = "sha256:f83f57b8b19188433c750c8055f0a1841f92bfe04af6da9e84fd6be2795d7542"},
-    {file = "surfkit-0.1.341.tar.gz", hash = "sha256:5bc1b531205692a588abece8e64107bedc72b6ec43d3657b7941e92e7badfb9f"},
+    {file = "surfkit-0.1.342-py3-none-any.whl", hash = "sha256:7af9c74e45a912a9be35521d59728f96793c7997550ccc21ea338ffa9c56341b"},
+    {file = "surfkit-0.1.342.tar.gz", hash = "sha256:c3998f867ab544f979997e0e92758c089a871edf8d7050e82e477f53b86ac73e"},
 ]
 
 [package.dependencies]
@@ -5628,4 +5628,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "e97ec652a6d30fe36817ba10217d0a50e1ad16ef2bebeb88ae68ccbfa53aebc9"
+content-hash = "828133f13b0cb83e134505f390c90124fce77239d7c902cf051a7bcff35f364f"
