@@ -8,6 +8,7 @@ import requests
 from agentdesk import Desktop
 from devicebay import Device
 from orign import ReplayBuffer, V1ChatEvent, V1MSSwiftBufferParams
+from orign.config import GlobalConfig
 from orign.models import ChatResponse
 from pydantic import BaseModel
 from rich.console import Console
@@ -60,6 +61,8 @@ class Foo(TaskAgent):
         actor_adapter = f"{skill.name}-actor"
         val_adapter = f"{skill.name}-val"
 
+        orign_config = GlobalConfig(api_key=task.auth_token)
+
         actor_sft_buffer = ReplayBuffer(
             name=actor_adapter,
             vram_request="40Gi",
@@ -85,6 +88,7 @@ class Foo(TaskAgent):
                 max_pixels=1025000,
                 freeze_vit=True,
             ),
+            config=orign_config,
         )
 
         val_sft_buffer = ReplayBuffer(
@@ -112,6 +116,7 @@ class Foo(TaskAgent):
                 max_pixels=1025000,
                 freeze_vit=True,
             ),
+            config=orign_config,
         )
 
         print("\n----\nchecking task: ", task.id)
