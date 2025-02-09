@@ -58,8 +58,11 @@ class Foo(TaskAgent):
         if not task.remote or not task.auth_token:
             raise ValueError("Task remote or token not set")
 
-        actor_adapter = f"{skill.name}-actor"
-        val_adapter = f"{skill.name}-val"
+        if not skill.name:
+            raise ValueError("Skill name not set")
+
+        actor_adapter = f"{skill.name.lower().replace(' ', '-')}-actor"
+        val_adapter = f"{skill.name.lower().replace(' ', '-')}-val"
 
         orign_config = GlobalConfig(api_key=task.auth_token)
 
@@ -67,9 +70,9 @@ class Foo(TaskAgent):
             name=actor_adapter,
             vram_request="40Gi",
             dtype="bfloat16",
-            train_every=50,
+            train_every=30,
             sample_n=100,
-            sample_strategy="Random",
+            sample_strategy="LatestWithRandom",
             ms_swift_params=V1MSSwiftBufferParams(
                 model="Qwen/Qwen2.5-VL-7B-Instruct",
                 model_type="qwen2_5_vl",
@@ -95,9 +98,9 @@ class Foo(TaskAgent):
             name=val_adapter,
             vram_request="40Gi",
             dtype="bfloat16",
-            train_every=50,
+            train_every=30,
             sample_n=100,
-            sample_strategy="Random",
+            sample_strategy="LatestWithRandom",
             ms_swift_params=V1MSSwiftBufferParams(
                 model="Qwen/Qwen2.5-VL-7B-Instruct",
                 model_type="qwen2_5_vl",
@@ -139,6 +142,7 @@ class Foo(TaskAgent):
                     approved = True
                     action_correction = review.correction
                     break
+
             console.print("approved: ", approved)
             console.print("action_correction: ", action_correction)
 
@@ -146,39 +150,47 @@ class Foo(TaskAgent):
                 console.print("skipping train", style="white")
                 continue
 
-            if not action.prompt:
-                console.print("no prompt", style="white")
+            # if not action.prompt:
+            actor = self.get_actor()
+            device = Desktop(check_health=False, requires_proxy=False)
+            content = actor.get_ctx(task, device, [])
+
+            if not action.state.images:
+                console.print("no images", style="red")
                 continue
 
-            if not isinstance(action.prompt, ChatResponse):
-                console.print("not a chat response", style="white")
-                continue
+            image_url = action.state.images[-1]
 
-            prompt: V1ChatEvent = action.prompt  # type: ignore
-            if not prompt.request.prompt:
-                console.print("no prompt", style="white")
-                continue
+            # else:
+            #     if not isinstance(action.prompt, ChatResponse):
+            #         console.print("not a chat response", style="white")
+            #         continue
 
-            if not prompt.request.prompt.messages:
-                console.print("no messages", style="red")
-                continue
+            #     prompt: V1ChatEvent = action.prompt  # type: ignore
+            #     if not prompt.request.prompt:
+            #         console.print("no prompt", style="white")
+            #         continue
 
-            if not prompt.request.prompt.messages[0].content or not isinstance(
-                prompt.request.prompt.messages[0].content, list
-            ):
-                console.print("no content", style="red")
-                continue
+            #     if not prompt.request.prompt.messages:
+            #         console.print("no messages", style="red")
+            #         continue
 
-            if not prompt.request.prompt.messages[0].content[0].text:
-                console.print("no text", style="red")
-                continue
+            #     if not prompt.request.prompt.messages[0].content or not isinstance(
+            #         prompt.request.prompt.messages[0].content, list
+            #     ):
+            #         console.print("no content", style="red")
+            #         continue
 
-            if not prompt.request.prompt.messages[0].content[1].image_url:
-                console.print("no image url", style="red")
-                continue
+            #     if not prompt.request.prompt.messages[0].content[0].text:
+            #         console.print("no text", style="red")
+            #         continue
 
-            content = prompt.request.prompt.messages[0].content[0].text
-            image_url = prompt.request.prompt.messages[0].content[1].image_url
+            #     if not prompt.request.prompt.messages[0].content[1].image_url:
+            #         console.print("no image url", style="red")
+            #         continue
+
+            #     content = prompt.request.prompt.messages[0].content[0].text
+            #     image_url = prompt.request.prompt.messages[0].content[1].image_url
 
             reason = None
             reason_update = None
@@ -232,7 +244,7 @@ class Foo(TaskAgent):
                 }
 
                 console.print("adding to actor buffer: ", swift_prompt)
-                console.print("orignal prompt: ", prompt.model_dump())
+                # console.print("orignal prompt: ", prompt.model_dump())
 
                 actor_sft_buffer.send([swift_prompt])
 
