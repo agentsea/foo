@@ -79,9 +79,9 @@ class Foo(TaskAgent):
                 train_type="lora",
                 deepspeed="zero3",
                 torch_dtype="bfloat16",
-                max_length=16384,
+                max_length=8192,
                 val_split_ratio=1.0,
-                num_train_epochs=2,
+                num_train_epochs=1,
                 eval_strategy="epoch",
                 save_strategy="epoch",
                 save_total_limit=3,
@@ -109,7 +109,7 @@ class Foo(TaskAgent):
                 torch_dtype="bfloat16",
                 max_length=16384,
                 val_split_ratio=1.0,
-                num_train_epochs=2,
+                num_train_epochs=1,
                 eval_strategy="epoch",
                 save_strategy="epoch",
                 save_total_limit=3,
@@ -131,6 +131,9 @@ class Foo(TaskAgent):
         if not task.episode:
             console.print("no episode", style="red")
             raise ValueError("Task has no episode")
+
+        send_val = []
+        send_actor = []
 
         for i, action in enumerate(task.episode.actions):
             console.print("action: ", action, "\n\n")
@@ -246,7 +249,7 @@ class Foo(TaskAgent):
                 console.print("adding to actor buffer: ", swift_prompt)
                 # console.print("orignal prompt: ", prompt.model_dump())
 
-                actor_sft_buffer.send([swift_prompt])
+                send_actor.append(swift_prompt)
 
             if validation:
                 val_ctx = (
@@ -290,8 +293,12 @@ class Foo(TaskAgent):
                     "images": [image_url, end_state],
                 }
                 console.print("adding to val buffer: ", val_swift_prompt)
+                send_val.append(val_swift_prompt)
 
-                val_sft_buffer.send([val_swift_prompt])
+        console.print("sending to val buffer...")
+        val_sft_buffer.send(send_val)
+        console.print("sending to actor buffer...")
+        actor_sft_buffer.send(send_actor)
 
     def solve_task(
         self,
