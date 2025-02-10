@@ -134,6 +134,18 @@ class Foo(TaskAgent):
         send_val = []
         send_actor = []
 
+        console.print("getting actor...")
+        actor = self.get_actor(api_key=task.auth_token)
+
+        console.print("getting device...")
+        device = Desktop(
+            agentd_url="http://localhost:8000", check_health=False, requires_proxy=False
+        )
+
+        console.print("getting ctx...")
+        content = actor.get_ctx(task, device, [])
+        console.print("got ctx")
+
         for i, action in enumerate(task.episode.actions):
             console.print("action: ", action, "\n\n")
 
@@ -151,16 +163,6 @@ class Foo(TaskAgent):
             if "foo/train/status" in action.metadata:
                 console.print("skipping train", style="white")
                 continue
-
-            console.print("getting actor...")
-            actor = self.get_actor(api_key=task.auth_token)
-
-            console.print("getting device...")
-            device = Desktop(check_health=False, requires_proxy=False)
-
-            console.print("getting ctx...")
-            content = actor.get_ctx(task, device, [])
-            console.print("got ctx")
 
             if not action.state.images:
                 console.print("no images", style="red")
