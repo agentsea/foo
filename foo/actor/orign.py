@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from agentdesk import Desktop
 from json_repair import repair_json
-from orign import ChatModel, V1ChatEvent
+from orign import Adapter, ChatModel, V1ChatEvent
 from orign.config import GlobalConfig
 from orign.models import (
     ChatRequest,
@@ -26,8 +26,27 @@ console = Console(force_terminal=True)
 class OrignActor(Actor[Desktop]):
     """An actor that uses ms-swift and orign"""
 
-    def __init__(self, api_key: str, model: Optional[str] = None):
+    def __init__(
+        self,
+        api_key: str,
+        adapter: Optional[str] = None,
+        model: Optional[str] = None,
+    ):
         config = GlobalConfig(api_key=api_key)
+
+        self.adapter = None
+
+        if adapter:
+            console.print(f"getting adapter: {adapter}")
+            adapters = Adapter.get(name=adapter, config=config)
+            console.print(f"found adapters: {adapters}")
+            if not adapters:
+                console.print(
+                    f"no adapters found for {adapter}, continuing without it..."
+                )
+                self.adapter = None
+            else:
+                self.adapter = adapter
 
         self.workflow_model_id = model or "Qwen/Qwen2.5-VL-7B-Instruct"
         self.workflow_model = ChatModel(
@@ -71,6 +90,7 @@ class OrignActor(Actor[Desktop]):
         response = self.workflow_model.chat(
             prompt=prompt,
             sampling_params=sampling_params,
+            adapter=self.adapter,
         )
         if not isinstance(response, ChatResponse):
             raise ValueError(f"Expected a ChatResponse, got: {type(response)}")

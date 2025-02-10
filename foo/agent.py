@@ -60,15 +60,14 @@ class Foo(TaskAgent):
         if not skill.name:
             raise ValueError("Skill name not set")
 
-        actor_adapter = f"{skill.name.lower().replace(' ', '-')}-actor"
-        val_adapter = f"{skill.name.lower().replace(' ', '-')}-val"
-
         orign_config = GlobalConfig(api_key=task.auth_token)
+
+        actor_adapter = self.get_actor_adapter_name(skill)
+        val_adapter = self.get_val_adapter_name(skill)
 
         actor_sft_buffer = ReplayBuffer(
             name=actor_adapter,
             vram_request="40Gi",
-            dtype="bfloat16",
             train_every=30,
             sample_n=100,
             sample_strategy="LatestWithRandom",
@@ -96,7 +95,6 @@ class Foo(TaskAgent):
         val_sft_buffer = ReplayBuffer(
             name=val_adapter,
             vram_request="40Gi",
-            dtype="bfloat16",
             train_every=30,
             sample_n=100,
             sample_strategy="LatestWithRandom",
@@ -356,7 +354,13 @@ class Foo(TaskAgent):
         if not task.auth_token:
             raise ValueError("Task auth token not set")
 
-        actor = self.get_actor(api_key=task.auth_token)
+        skill = self.get_skill(task)
+
+        console.print("getting actor...")
+        actor = self.get_actor(
+            api_key=task.auth_token, adapter=self.get_actor_adapter_name(skill)
+        )
+        console.print("got actor")
 
         # Loop to run actions
         for i in range(max_steps):
@@ -494,8 +498,38 @@ class Foo(TaskAgent):
             task.post_message("assistant", f"⚠️ Error taking action: {e} -- retrying...")
             raise e
 
-    def get_actor(self, api_key: str) -> Actor:
-        return OrignActor(api_key=api_key)
+    def get_actor_adapter_name(self, skill: Skill) -> str:
+        return f"{skill.name.lower().replace(' ', '-')}-actor"  # type: ignore
+
+    def get_val_adapter_name(self, skill: Skill) -> str:
+        return f"{skill.name.lower().replace(' ', '-')}-val"  # type: ignore
+
+    def get_skill(self, task: Task) -> Skill:
+        skill_id = None
+        if task.skill:
+            skill_id = task.skill
+        elif "skill" in task.labels:
+            skill_id = task.labels["skill"]
+        elif "skill_id" in task.labels:
+            skill_id = task.labels["skill_id"]
+        else:
+            raise ValueError("Task skill or skill label not set")
+
+        console.print(f"finding skill_id: {skill_id}")
+        skills = Skill.find(id=skill_id, remote=task.remote, token=task.auth_token)
+        if not skills:
+            raise ValueError(f"Skill not found: {skill_id}")
+        skill = skills[0]
+        console.print(f"found skill: {skill.id}")
+
+        return skill
+
+    def get_actor(
+        self,
+        api_key: str,
+        adapter: Optional[str] = None,
+    ) -> Actor:
+        return OrignActor(adapter=adapter, api_key=api_key)
 
     def label_task(
         self, remote: str, token: str, task: Task, key: str, value: str
