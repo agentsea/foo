@@ -7,9 +7,8 @@ from typing import Final, List, Optional, Tuple, Type
 import requests
 from agentdesk import Desktop
 from devicebay import Device
-from orign import ReplayBuffer, V1ChatEvent, V1MSSwiftBufferParams
+from orign import ReplayBuffer, V1MSSwiftBufferParams
 from orign.config import GlobalConfig
-from orign.models import ChatResponse
 from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
@@ -153,10 +152,15 @@ class Foo(TaskAgent):
                 console.print("skipping train", style="white")
                 continue
 
-            # if not action.prompt:
-            actor = self.get_actor()
+            console.print("getting actor...")
+            actor = self.get_actor(api_key=task.auth_token)
+
+            console.print("getting device...")
             device = Desktop(check_health=False, requires_proxy=False)
+
+            console.print("getting ctx...")
             content = actor.get_ctx(task, device, [])
+            console.print("got ctx")
 
             if not action.state.images:
                 console.print("no images", style="red")
@@ -347,7 +351,10 @@ class Foo(TaskAgent):
 
         history: List[Step] = []
 
-        actor = self.get_actor()
+        if not task.auth_token:
+            raise ValueError("Task auth token not set")
+
+        actor = self.get_actor(api_key=task.auth_token)
 
         # Loop to run actions
         for i in range(max_steps):
@@ -474,8 +481,8 @@ class Foo(TaskAgent):
             task.post_message("assistant", f"⚠️ Error taking action: {e} -- retrying...")
             raise e
 
-    def get_actor(self) -> Actor:
-        return OrignActor()
+    def get_actor(self, api_key: str) -> Actor:
+        return OrignActor(api_key=api_key)
 
     def label_task(
         self, remote: str, token: str, task: Task, key: str, value: str

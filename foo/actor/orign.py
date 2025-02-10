@@ -3,6 +3,7 @@ from typing import List, Optional
 from agentdesk import Desktop
 from json_repair import repair_json
 from orign import ChatModel, V1ChatEvent
+from orign.config import GlobalConfig
 from orign.models import (
     ChatRequest,
     ChatResponse,
@@ -25,9 +26,15 @@ console = Console(force_terminal=True)
 class OrignActor(Actor[Desktop]):
     """An actor that uses ms-swift and orign"""
 
-    def __init__(self, model: Optional[str] = None):
+    def __init__(self, api_key: str, model: Optional[str] = None):
+        config = GlobalConfig(api_key=api_key)
+
         self.workflow_model_id = model or "Qwen/Qwen2.5-VL-7B-Instruct"
-        self.workflow_model = ChatModel(model=self.workflow_model_id, provider="vllm")
+        self.workflow_model = ChatModel(
+            model=self.workflow_model_id,
+            provider="vllm",
+            config=config,
+        )
         self.workflow_model.connect()
 
     def act(self, task: Task, device: Desktop, history: List[Step]) -> Step:
