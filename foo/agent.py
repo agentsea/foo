@@ -12,7 +12,7 @@ from orign.config import GlobalConfig
 from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
-from skillpacks.reviewable import AnnotationReviewable
+from skillpacks.reviewable import AnnotationReviewable, ReviewerType
 from surfkit.agent import TaskAgent
 from surfkit.skill import Skill
 from taskara import Task, TaskStatus
@@ -464,6 +464,16 @@ class Foo(TaskAgent):
                     "assistant", f"👁️ Result from taking action: {action_response}"
                 )
 
+            if not step.reason:
+                raise ValueError("No reason provided")
+
+            reviewable = AnnotationReviewable(
+                key="reason",
+                value=step.reason,
+                annotator=self.name(),
+                annotator_type=ReviewerType.AGENT.value,
+            )
+
             # Record the action for feedback and tuning
             task.record_action(
                 state=step.state,
@@ -473,6 +483,7 @@ class Foo(TaskAgent):
                 result=action_response,
                 agent_id=self.name(),
                 model=step.model_id,
+                reviewables=[reviewable],
             )
 
             return step, False
