@@ -18,7 +18,7 @@ from rich.json import JSON
 from skillpacks import EnvState, V1Action
 from taskara import Task
 
-from .base import Actor, Step
+from .base import Actor, ReasonedAction, Step
 
 console = Console(force_terminal=True)
 
@@ -83,8 +83,11 @@ class OrignActor(Actor[Desktop]):
 
             task.post_message(
                 "assistant",
-                f"▶️ Taking action '{selection.name}' with parameters: {selection.parameters}",
+                f"▶️ Taking action '{selection.action.name}' with parameters: {selection.action.parameters}",
             )
+
+            console.print("reason: ", style="white")
+            console.print(selection.reason, style="white")
 
         except Exception as e:
             console.print(f"Response failed to parse: {e}", style="red")
@@ -97,16 +100,17 @@ class OrignActor(Actor[Desktop]):
 
         step = Step(
             state=EnvState(images=screenshots),
-            action=selection,
+            action=selection.action,
             task=task,
             thread=messages,
             model_id=self.workflow_model_id,
             prompt=event,
+            reason=selection.reason,
         )
 
         return step
 
-    def _parse_response(self, response: ChatResponse) -> List[V1Action]:
+    def _parse_response(self, response: ChatResponse) -> List[ReasonedAction]:
         import re
 
         output = []
@@ -115,9 +119,13 @@ class OrignActor(Actor[Desktop]):
 
             # Extract the <think> ... </think> content (optional)
             think_match = re.search(r"<think>(.+?)</think>", text, re.DOTALL)
-            if think_match:
-                thought_content = think_match.group(1).strip()
-                console.print(f"parsed thought: {thought_content}")
+
+            if not think_match:
+                console.print("Error: could not find <think> block in the response")
+                continue
+
+            thought_content = think_match.group(1).strip()
+            console.print(f"parsed thought: {thought_content}")
 
             # Extract the <answer> ... </answer> content
             answer_match = re.search(r"<answer>(.+?)</answer>", text, re.DOTALL)
@@ -131,14 +139,17 @@ class OrignActor(Actor[Desktop]):
             try:
                 obj = repair_json(answer_text, return_objects=True)
                 action = V1Action.model_validate(obj)
-                output.append(action)
+                output.append(ReasonedAction(action=action, reason=thought_content))
             except Exception as e:
                 console.print("Error parsing action: ", e)
                 continue
 
+        if not output:
+            raise ValueError("No valid actions found in the response")
+
         return output
 
-    def _select_action(self, actions: List[V1Action]) -> V1Action:
+    def _select_action(self, actions: List[ReasonedAction]) -> ReasonedAction:
         console.print("action options: ", style="white")
 
         for i, act in enumerate(actions):
@@ -147,9 +158,9 @@ class OrignActor(Actor[Desktop]):
 
         action = actions[0]
         # Remove start_x and start_y if present
-        if action.parameters and isinstance(action.parameters, dict):  # type: ignore
-            action.parameters.pop("start_x", None)
-            action.parameters.pop("start_y", None)
+        if action.action.parameters and isinstance(action.action.parameters, dict):  # type: ignore
+            action.action.parameters.pop("start_x", None)
+            action.action.parameters.pop("start_y", None)
         return action
 
     def get_ctx(self, task: Task, device: Desktop, history: List[Step]) -> str:

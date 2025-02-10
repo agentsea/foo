@@ -5,6 +5,7 @@ from typing import Generic, List, Optional, TypeVar
 from devicebay import Device
 from orign import V1ChatEvent
 from orign.models import MessageItem
+from pydantic import BaseModel
 from rich.console import Console
 from skillpacks import EnvState, V1Action
 from taskara import Task
@@ -23,6 +24,12 @@ class Step:
     task: Optional[Task] = None
     model_id: Optional[str] = None
     prompt: Optional[V1ChatEvent] = None
+    reason: Optional[str] = None
+
+
+class ReasonedAction(BaseModel):
+    action: V1Action
+    reason: str
 
 
 T = TypeVar("T", bound=Device)

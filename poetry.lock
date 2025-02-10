@@ -367,17 +367,17 @@ six = "*"
 
 [[package]]
 name = "boto3"
-version = "1.36.16"
+version = "1.36.17"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "boto3-1.36.16-py3-none-any.whl", hash = "sha256:b10583bf8bd35be1b4027ee7e26b7cdf2078c79eab18357fd602cecb6d39400b"},
-    {file = "boto3-1.36.16.tar.gz", hash = "sha256:0cf92ca0538ab115447e1c58050d43e1273e88c58ddfea2b6f133fdc508b400a"},
+    {file = "boto3-1.36.17-py3-none-any.whl", hash = "sha256:59bcf0c4b04d9cc36f8b418ad17ab3c4a99a21a175d2fad7096aa21cbe84630b"},
+    {file = "boto3-1.36.17.tar.gz", hash = "sha256:5ecae20e780a3ce9afb3add532b61c466a8cb8960618e4fa565b3883064c1346"},
 ]
 
 [package.dependencies]
-botocore = ">=1.36.16,<1.37.0"
+botocore = ">=1.36.17,<1.37.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.11.0,<0.12.0"
 
@@ -812,13 +812,13 @@ xray = ["mypy-boto3-xray (>=1.36.0,<1.37.0)"]
 
 [[package]]
 name = "botocore"
-version = "1.36.16"
+version = "1.36.17"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "botocore-1.36.16-py3-none-any.whl", hash = "sha256:aca0348ccd730332082489b6817fdf89e1526049adcf6e9c8c11c96dd9f42c03"},
-    {file = "botocore-1.36.16.tar.gz", hash = "sha256:10c6aa386ba1a9a0faef6bb5dbfc58fc2563a3c6b95352e86a583cd5f14b11f3"},
+    {file = "botocore-1.36.17-py3-none-any.whl", hash = "sha256:069858b2fd693548035d7fd53a774e37e4260fea64e0ac9b8a3aee904f9321df"},
+    {file = "botocore-1.36.17.tar.gz", hash = "sha256:cec13e0a7ce78e71aad0b397581b4e81824c7981ef4c261d2e296d200c399b09"},
 ]
 
 [package.dependencies]
@@ -4574,13 +4574,13 @@ files = [
 
 [[package]]
 name = "skillpacks"
-version = "0.1.116"
+version = "0.1.118"
 description = "Pluggable skills for AI agents"
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "skillpacks-0.1.116-py3-none-any.whl", hash = "sha256:35826700ff708e0cfffc7a1ee3016eb8b9454de0c1e3533d32c9c0ba7d191e1e"},
-    {file = "skillpacks-0.1.116.tar.gz", hash = "sha256:29cc6981d15e89b0c82df80cbd5e08463fd8ee8a491af1991d04deaec0b2da59"},
+    {file = "skillpacks-0.1.118-py3-none-any.whl", hash = "sha256:13751733fdc1c41a1d91902e68af6b5e65212c13b8952727f650dff399613d8e"},
+    {file = "skillpacks-0.1.118.tar.gz", hash = "sha256:c5c096f5d0ad93d66ee8807f79e7b0f0f19672ad7e50fecc1f477059ff0b5a5e"},
 ]
 
 [package.dependencies]
@@ -4716,13 +4716,13 @@ full = ["httpx (>=0.22.0)", "itsdangerous", "jinja2", "python-multipart (>=0.0.7
 
 [[package]]
 name = "surfkit"
-version = "0.1.347"
+version = "0.1.349"
 description = "A toolkit for building AI agents that use devices"
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "surfkit-0.1.347-py3-none-any.whl", hash = "sha256:185a3edde8faf5634d6cbb5551834ed5adb73d7c907d830f88da9471419c7d49"},
-    {file = "surfkit-0.1.347.tar.gz", hash = "sha256:faab9e5fc456401b1ec91ea17a3371e273ba9f629b735823ac7495ffb6d23b1a"},
+    {file = "surfkit-0.1.349-py3-none-any.whl", hash = "sha256:aa1b4248662fbec7be8090afe905b3c085ce7e0492c32468e8024cc34abd9308"},
+    {file = "surfkit-0.1.349.tar.gz", hash = "sha256:514afc141632d7c0cbab4c78ab24a9f7b91b05adff493605e9cd29d8399c1118"},
 ]
 
 [package.dependencies]
@@ -4736,7 +4736,7 @@ pydantic = ">=2.6.4,<3.0.0"
 pyyaml = ">=6.0.1,<7.0.0"
 rich = ">=13.7.1,<14.0.0"
 rootpath = ">=0.1.1,<0.2.0"
-taskara = ">=0.1.221,<0.2.0"
+taskara = ">=0.1.223,<0.2.0"
 threadmem = ">=0.2.11,<0.3.0"
 toolfuse = ">=0.1.15,<0.2.0"
 tqdm = ">=4.66.4,<5.0.0"
@@ -4757,13 +4757,13 @@ widechars = ["wcwidth"]
 
 [[package]]
 name = "taskara"
-version = "0.1.222"
+version = "0.1.223"
 description = "Task management for AI agents"
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "taskara-0.1.222-py3-none-any.whl", hash = "sha256:73c1a4f8dfc21d98c69cd352cd71dfda042865b3090d0c6f7fed7a74b94b6b4a"},
-    {file = "taskara-0.1.222.tar.gz", hash = "sha256:e2c5fa190905a6bd023e0b61736acfafbae0dee4e3b9f6208496b17c17d334ad"},
+    {file = "taskara-0.1.223-py3-none-any.whl", hash = "sha256:12d52f636ec8bc3e959db115e5c97d9cc2ee2573ff98279aeeaf4211ba539ded"},
+    {file = "taskara-0.1.223.tar.gz", hash = "sha256:13bac97767389f838bbfb6e341c69a5198caef49a325b6343790436651145467"},
 ]
 
 [package.dependencies]
@@ -4773,7 +4773,7 @@ namesgenerator = ">=0.3,<0.4"
 pydantic = ">=2.6.4,<3.0.0"
 redis = ">=5.2.0,<6.0.0"
 shortuuid = ">=1.0.13,<2.0.0"
-skillpacks = ">=0.1.116,<0.2.0"
+skillpacks = ">=0.1.118,<0.2.0"
 sqlalchemy = ">=2.0.29,<3.0.0"
 threadmem = ">=0.2.26,<0.3.0"
 tqdm = ">=4.66.4,<5.0.0"
@@ -5275,13 +5275,13 @@ test = ["aiohttp (>=3.10.5)", "flake8 (>=5.0,<6.0)", "mypy (>=0.800)", "psutil",
 
 [[package]]
 name = "virtualenv"
-version = "20.29.1"
+version = "20.29.2"
 description = "Virtual Python Environment builder"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "virtualenv-20.29.1-py3-none-any.whl", hash = "sha256:4e4cb403c0b0da39e13b46b1b2476e505cb0046b25f242bee80f62bf990b2779"},
-    {file = "virtualenv-20.29.1.tar.gz", hash = "sha256:b8b8970138d32fb606192cb97f6cd4bb644fa486be9308fb9b63f81091b5dc35"},
+    {file = "virtualenv-20.29.2-py3-none-any.whl", hash = "sha256:febddfc3d1ea571bdb1dc0f98d7b45d24def7428214d4fb73cc486c9568cce6a"},
+    {file = "virtualenv-20.29.2.tar.gz", hash = "sha256:fdaabebf6d03b5ba83ae0a02cfe96f48a716f4fae556461d180825866f75b728"},
 ]
 
 [package.dependencies]
@@ -5628,4 +5628,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "0624b1a2135658de30abf6c8f43a6b55716ecd58c4dc89d2f7b78ad365baf478"
+content-hash = "002c3acbbc4c9526005eead42d8303572d9e263aca594cd19b4c07fb65600aac"
