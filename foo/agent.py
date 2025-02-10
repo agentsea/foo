@@ -234,7 +234,7 @@ class Foo(TaskAgent):
                 if reason_update:
                     response_reason = reason_update
 
-                response = f"<think>{response_reason}</think><answer>{action.action.model_dump_json()}</answer>"
+                response = f"<think>{response_reason}</think><answer>{action.action.model_dump_json(exclude_unset=True, exclude_none=True)}</answer>"
 
                 swift_prompt = {
                     "messages": [
