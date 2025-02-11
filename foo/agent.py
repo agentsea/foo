@@ -80,7 +80,7 @@ class Foo(TaskAgent):
                 max_length=8192,
                 val_split_ratio=1.0,
                 num_train_epochs=1,
-                eval_strategy="epoch",
+                eval_strategy="no",
                 save_strategy="epoch",
                 save_total_limit=3,
                 lora_rank=64,
@@ -107,7 +107,7 @@ class Foo(TaskAgent):
                 max_length=16384,
                 val_split_ratio=1.0,
                 num_train_epochs=1,
-                eval_strategy="epoch",
+                eval_strategy="no",
                 save_strategy="epoch",
                 save_total_limit=3,
                 lora_rank=64,
@@ -499,10 +499,10 @@ class Foo(TaskAgent):
             raise e
 
     def get_actor_adapter_name(self, skill: Skill) -> str:
-        return f"{skill.name.lower().replace(' ', '-')}-actor"  # type: ignore
+        return f"{skill.name.lower().replace(' ', '-')}-act"  # type: ignore
 
     def get_val_adapter_name(self, skill: Skill) -> str:
-        return f"{skill.name.lower().replace(' ', '-')}-val"  # type: ignore
+        return f"{skill.name.lower().replace(' ', '-')}-validate"  # type: ignore
 
     def get_skill(self, task: Task) -> Skill:
         skill_id = None
