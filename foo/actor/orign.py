@@ -19,6 +19,7 @@ from skillpacks import EnvState, V1Action
 from taskara import Task
 
 from .base import Actor, ReasonedAction, Step
+from .img import image_to_b64
 
 console = Console(force_terminal=True)
 
@@ -63,7 +64,7 @@ class OrignActor(Actor[Desktop]):
         width, height = s0.size  # Get the dimensions of the screenshot
         console.print(f"Screenshot dimensions: {width} x {height}")
 
-        screenshot = "data:image/png;base64," + s0.get_image_data()
+        screenshot = image_to_b64(s0)
 
         # Get the current mouse coordinates
         x, y = device.mouse_coordinates()
