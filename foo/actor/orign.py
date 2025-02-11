@@ -138,6 +138,8 @@ class OrignActor(Actor[Desktop]):
         for choice in response.choices:
             text = choice.text
 
+            console.print(f"choice text: {text}")
+
             # Extract the <think> ... </think> content (optional)
             think_match = re.search(r"<think>(.+?)</think>", text, re.DOTALL)
 
