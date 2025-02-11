@@ -321,78 +321,89 @@ class Foo(TaskAgent):
             Task: The task
         """
 
-        if not device:
-            raise ValueError("This agent expects a desktop")
+        try:
+            if not device:
+                raise ValueError("This agent expects a desktop")
 
-        # Post a message to the default thread to let the user know the task is in progress
-        task.post_message("assistant", f"Starting task '{task.description}'")
+            # Post a message to the default thread to let the user know the task is in progress
+            task.post_message("assistant", f"Starting task '{task.description}'")
 
-        # Create threads in the task to update the user
-        console.print("creating threads...")
-        task.ensure_thread("debug")
-        task.post_message("assistant", "I'll post debug messages here", thread="debug")
+            # Create threads in the task to update the user
+            console.print("creating threads...")
+            task.ensure_thread("debug")
+            task.post_message(
+                "assistant", "I'll post debug messages here", thread="debug"
+            )
 
-        # Check that the device we received is one we support
-        if not isinstance(device, Desktop):
-            raise ValueError("Only desktop devices supported")
+            # Check that the device we received is one we support
+            if not isinstance(device, Desktop):
+                raise ValueError("Only desktop devices supported")
 
-        # Add standard agent utils to the device
-        device.merge(AgentUtils())
+            # Add standard agent utils to the device
+            device.merge(AgentUtils())
 
-        # Get the json schema for the tools
-        tools = device.json_schema()
-        console.print("tools: ", style="purple")
-        console.print(JSON.from_data(tools))
+            # Get the json schema for the tools
+            tools = device.json_schema()
+            console.print("tools: ", style="purple")
+            console.print(JSON.from_data(tools))
 
-        # Get info about the desktop
-        info = device.info()
-        screen_size = info["screen_size"]
-        console.print(f"Screen size: {screen_size}")
+            # Get info about the desktop
+            info = device.info()
+            screen_size = info["screen_size"]
+            console.print(f"Screen size: {screen_size}")
 
-        history: List[Step] = []
+            history: List[Step] = []
 
-        if not task.auth_token:
-            raise ValueError("Task auth token not set")
+            if not task.auth_token:
+                raise ValueError("Task auth token not set")
 
-        skill = self.get_skill(task)
+            skill = self.get_skill(task)
 
-        console.print("getting actor...")
-        actor = self.get_actor(
-            api_key=task.auth_token, adapter=self.get_actor_adapter_name(skill)
-        )
-        console.print("got actor")
+            console.print("getting actor...")
+            actor = self.get_actor(
+                api_key=task.auth_token, adapter=self.get_actor_adapter_name(skill)
+            )
+            console.print("got actor")
 
-        # Loop to run actions
-        for i in range(max_steps):
-            console.print(f"-------step {i + 1}", style="green")
+            # Loop to run actions
+            for i in range(max_steps):
+                console.print(f"-------step {i + 1}", style="green")
 
-            try:
-                step, done = self.take_action(device, task, actor, history)
-            except Exception as e:
-                console.print(f"Error: {e}", style="red")
-                task.status = TaskStatus.FAILED
-                task.error = str(e)
-                task.save()
-                task.post_message("assistant", f"❗ Error taking action: {e}")
-                return task
+                try:
+                    step, done = self.take_action(device, task, actor, history)
+                except Exception as e:
+                    console.print(f"Error: {e}", style="red")
+                    task.status = TaskStatus.FAILED
+                    task.error = str(e)
+                    task.save()
+                    task.post_message("assistant", f"❗ Error taking action: {e}")
+                    return task
 
-            if step:
-                history.append(step)
+                if step:
+                    history.append(step)
 
-            if done:
-                console.print("task is done", style="green")
-                # TODO: remove
-                time.sleep(10)
-                return task
+                if done:
+                    console.print("task is done", style="green")
+                    # TODO: remove
+                    time.sleep(10)
+                    return task
 
-            time.sleep(2)
+                time.sleep(2)
 
-        task.status = TaskStatus.FAILED
-        task.save()
-        task.post_message("assistant", "❗ Max steps reached without solving task")
-        console.print("Reached max steps without solving task", style="red")
+            task.status = TaskStatus.FAILED
+            task.save()
+            task.post_message("assistant", "❗ Max steps reached without solving task")
+            console.print("Reached max steps without solving task", style="red")
 
-        return task
+            return task
+
+        except Exception as e:
+            console.print(f"Error: {e}", style="red")
+            task.status = TaskStatus.FAILED
+            task.error = str(e)
+            task.save()
+            task.post_message("assistant", f"❗ Error solving task: {e}")
+            return task
 
     @retry(
         stop=stop_after_attempt(5),
