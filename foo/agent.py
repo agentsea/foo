@@ -62,8 +62,11 @@ class Foo(TaskAgent):
 
         orign_config = GlobalConfig(api_key=task.auth_token)
 
-        actor_adapter = self.get_actor_adapter_name(skill)
-        val_adapter = self.get_val_adapter_name(skill)
+        if not task.owner_id:
+            raise ValueError("Task owner_id not set")
+
+        actor_adapter = self.get_actor_adapter_name(skill, task.owner_id)
+        val_adapter = self.get_val_adapter_name(skill, task.owner_id)
 
         actor_sft_buffer = ReplayBuffer(
             name=actor_adapter,
@@ -369,9 +372,13 @@ class Foo(TaskAgent):
 
             skill = self.get_skill(task)
 
+            if not task.owner_id:
+                raise ValueError("Task owner_id not set")
+
             console.print("getting actor...")
             actor = self.get_actor(
-                api_key=task.auth_token, adapter=self.get_actor_adapter_name(skill)
+                api_key=task.auth_token,
+                adapter=self.get_actor_adapter_name(skill, task.owner_id),
             )
             console.print("got actor")
 
@@ -519,11 +526,11 @@ class Foo(TaskAgent):
             task.post_message("assistant", f"⚠️ Error taking action: {e} -- retrying...")
             raise e
 
-    def get_actor_adapter_name(self, skill: Skill) -> str:
-        return f"{skill.name.lower().replace(' ', '-')}-act"  # type: ignore
+    def get_actor_adapter_name(self, skill: Skill, owner_id: str) -> str:
+        return f"{owner_id}/{skill.name.lower().replace(' ', '-')}-act"  # type: ignore
 
-    def get_val_adapter_name(self, skill: Skill) -> str:
-        return f"{skill.name.lower().replace(' ', '-')}-validate"  # type: ignore
+    def get_val_adapter_name(self, skill: Skill, owner_id: str) -> str:
+        return f"{owner_id}/{skill.name.lower().replace(' ', '-')}-validate"  # type: ignore
 
     def get_skill(self, task: Task) -> Skill:
         skill_id = None
