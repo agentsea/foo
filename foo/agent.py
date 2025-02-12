@@ -158,6 +158,10 @@ class Foo(TaskAgent):
             console.print("approved: ", approved)
             console.print("action_correction: ", action_correction)
 
+            if not approved:
+                console.print("skipping not approved", style="white")
+                continue
+
             if "foo/train/status" in action.metadata:
                 console.print("skipping train", style="white")
                 continue
@@ -234,7 +238,13 @@ class Foo(TaskAgent):
                 if reason_update:
                     response_reason = reason_update
 
-                response = f"<think>{response_reason}</think><answer>{action.action.model_dump_json(exclude_unset=True, exclude_none=True)}</answer>"
+                action_str = action.action.model_dump_json(
+                    exclude_unset=True, exclude_none=True, exclude_defaults=True
+                )
+
+                response = (
+                    f"<think>{response_reason}</think><answer>{action_str}</answer>"
+                )
 
                 swift_prompt = {
                     "messages": [
