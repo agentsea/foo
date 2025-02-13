@@ -57,6 +57,9 @@ class Foo(TaskAgent):
         if not task.remote or not task.auth_token:
             raise ValueError("Task remote or token not set")
 
+        print("task remote: ", task.remote)
+        print("task auth_token: ", task.auth_token)
+
         if not skill.name:
             raise ValueError("Skill name not set")
 
