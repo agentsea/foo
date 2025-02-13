@@ -19,7 +19,7 @@ threadmem = "^0.2.37"
 taskara = "^0.1.171"
 openai = "^1.59.3"
 orign = "^0.1.33"
-surfkit = "^0.1.353"
+surfkit = "^0.1.360"
 
 
 [tool.poetry.group.dev.dependencies]
