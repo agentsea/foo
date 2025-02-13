@@ -12,7 +12,7 @@ steps:
         '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/guisurfer/foo:latest',
         '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/guisurfer/foo:${SHORT_SHA}',
         '--cache-from', 'type=registry,ref=us-central1-docker.pkg.dev/$PROJECT_ID/guisurfer/foo:latest:buildcache',
-        '--cache-to', 'type=us-central1-docker.pkg.dev/$PROJECT_ID/guisurfer/foo:latest:buildcache,mode=max',
+        '--cache-to', 'type=registry,ref=us-central1-docker.pkg.dev/$PROJECT_ID/guisurfer/foo:latest:buildcache,mode=max',
         '--push',
         '.',
       ]
