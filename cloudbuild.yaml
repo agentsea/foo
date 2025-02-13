@@ -11,8 +11,8 @@ steps:
         '--platform', 'linux/arm64,linux/amd64',
         '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/guisurfer/foo:latest',
         '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/guisurfer/foo:${SHORT_SHA}',
-        '--cache-from', 'type=registry,ref=us-central1-docker.pkg.dev/$PROJECT_ID/guisurfer/foo:latest:buildcache',
-        '--cache-to', 'type=registry,ref=us-central1-docker.pkg.dev/$PROJECT_ID/guisurfer/foo:latest:buildcache,mode=max',
+        '--cache-from', 'type=registry,ref=us-central1-docker.pkg.dev/$PROJECT_ID/guisurfer/foo:buildcache',
+        '--cache-to', 'type=registry,ref=us-central1-docker.pkg.dev/$PROJECT_ID/guisurfer/foo:buildcache,mode=max',
         '--push',
         '.',
       ]
@@ -20,4 +20,4 @@ steps:
 timeout: "3600s"
 
 options:
-  machineType: "N1_HIGHCPU_8"
+  machineType: "N1_HIGHCPU_8"g
