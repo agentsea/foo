@@ -5,6 +5,7 @@ import traceback
 from typing import Final, List, Optional, Tuple, Type
 
 import requests
+from agentcore.models import V1UserProfile
 from agentdesk import Desktop
 from devicebay import Device
 from orign import ReplayBuffer, V1MSSwiftBufferParams
@@ -45,6 +46,7 @@ class Foo(TaskAgent):
         self,
         task: Task,
         skill: Skill,
+        user: V1UserProfile,
     ):
         """Learn a task
 
@@ -68,8 +70,11 @@ class Foo(TaskAgent):
         if not task.owner_id:
             raise ValueError("Task owner_id not set")
 
-        actor_adapter = self.get_actor_adapter_name(skill, task.owner_id)
-        val_adapter = self.get_val_adapter_name(skill, task.owner_id)
+        actor_adapter = self.get_actor_adapter_name(skill, task.owner_id, user)
+        val_adapter = self.get_val_adapter_name(skill, task.owner_id, user)
+
+        print("actor_adapter: ", actor_adapter)
+        print("val_adapter: ", val_adapter)
 
         actor_sft_buffer = ReplayBuffer(
             name=actor_adapter,
@@ -529,10 +534,18 @@ class Foo(TaskAgent):
             task.post_message("assistant", f"⚠️ Error taking action: {e} -- retrying...")
             raise e
 
-    def get_actor_adapter_name(self, skill: Skill, owner_id: str) -> str:
+    def get_actor_adapter_name(
+        self, skill: Skill, owner_id: str, user: V1UserProfile
+    ) -> str:
+        if "@" in owner_id:
+            owner_id = user.handle  # type: ignore
         return f"{owner_id}/{skill.name.lower().replace(' ', '-')}-act"  # type: ignore
 
-    def get_val_adapter_name(self, skill: Skill, owner_id: str) -> str:
+    def get_val_adapter_name(
+        self, skill: Skill, owner_id: str, user: V1UserProfile
+    ) -> str:
+        if "@" in owner_id:
+            owner_id = user.handle  # type: ignore
         return f"{owner_id}/{skill.name.lower().replace(' ', '-')}-validate"  # type: ignore
 
     def get_skill(self, task: Task) -> Skill:

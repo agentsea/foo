@@ -76,7 +76,7 @@ def learn_task(
         print(f"labeling task as training: {task.id}", flush=True)
         _label_task(task.remote, task.auth_token, task, "foo/train/status", "training")
         print("labeled task as training", flush=True)
-        agent.learn_task(task, skill)
+        agent.learn_task(task, skill, current_user)
         print(f"labeling task as finished: {task.id}", flush=True)
         _label_task(task.remote, task.auth_token, task, "foo/train/status", "finished")
         print("labeled task as finished", flush=True)
