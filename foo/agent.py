@@ -15,6 +15,7 @@ from rich.console import Console
 from rich.json import JSON
 from skillpacks.reviewable import AnnotationReviewable, ReviewerType
 from surfkit.agent import TaskAgent
+from surfkit.auth import get_user_info
 from surfkit.skill import Skill
 from taskara import Task, TaskStatus
 from taskara.server.models import V1TaskUpdate
@@ -378,15 +379,22 @@ class Foo(TaskAgent):
             if not task.auth_token:
                 raise ValueError("Task auth token not set")
 
+            console.print("getting user info...")
+            user = get_user_info(task.auth_token)
+            console.print("got user info")
+
             skill = self.get_skill(task)
 
             if not task.owner_id:
                 raise ValueError("Task owner_id not set")
 
+            adapter = self.get_actor_adapter_name(skill, task.owner_id, user)
+            print("adapter: ", adapter)
+
             console.print("getting actor...")
             actor = self.get_actor(
                 api_key=task.auth_token,
-                adapter=self.get_actor_adapter_name(skill, task.owner_id),
+                adapter=adapter,
             )
             console.print("got actor")
 
@@ -537,7 +545,7 @@ class Foo(TaskAgent):
     def get_actor_adapter_name(
         self, skill: Skill, owner_id: str, user: V1UserProfile
     ) -> str:
-        if "@" in owner_id:
+        if "@" in owner_id:  # TODO: yuck, user owner_id in the adapter to specify
             owner_id = user.handle  # type: ignore
         return f"{owner_id}/{skill.name.lower().replace(' ', '-')}-act"  # type: ignore
 
