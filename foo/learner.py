@@ -54,6 +54,8 @@ def learn_task(
         raise ValueError("Task skill or skill label not set")
 
     logger.info(f"finding skill_id: {skill_id}")
+    print(f"current_user token: {current_user.token}", flush=True)
+    print(f"task.remote: {task.remote}", flush=True)
     skills = Skill.find(id=skill_id, remote=task.remote, token=current_user.token)
     if not skills:
         raise ValueError(f"Skill not found: {skill_id}")
