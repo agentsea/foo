@@ -15,7 +15,7 @@ from rich.console import Console
 from rich.json import JSON
 from skillpacks.reviewable import AnnotationReviewable, ReviewerType
 from surfkit.agent import TaskAgent
-from surfkit.auth import get_user_info
+from surfkit.auth.util import get_user_info
 from surfkit.skill import Skill
 from taskara import Task, TaskStatus
 from taskara.server.models import V1TaskUpdate
