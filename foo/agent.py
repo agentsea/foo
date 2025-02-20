@@ -114,7 +114,7 @@ class Foo(TaskAgent):
                 model="Qwen/Qwen2.5-VL-7B-Instruct",
                 model_type="qwen2_5_vl",
                 train_type="lora",
-                deepspeed="zero3",
+                deepspeed="zero3_offload",
                 torch_dtype="bfloat16",
                 max_length=16384,
                 val_split_ratio=1.0,
