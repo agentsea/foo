@@ -15,6 +15,11 @@ from rich.json import JSON
 from skillpacks.reviewable import AnnotationReviewable, ReviewerType
 from surfkit.agent import TaskAgent
 from surfkit.auth.util import get_user_info
+from surfkit.prompt.annots import (
+    create_swift_description_prompt,
+    create_swift_reason_prompt,
+    create_swift_validation_prompt,
+)
 from surfkit.skill import Skill
 from taskara import Task, TaskStatus
 from taskara.server.models import V1TaskUpdate
@@ -35,11 +40,6 @@ from .buffer import (
     create_reason_annot_sft_buffer,
     create_val_sft_buffer,
     create_validation_annot_sft_buffer,
-)
-from .prompt import (
-    create_swift_description_prompt,
-    create_swift_reason_prompt,
-    create_swift_validation_prompt,
 )
 
 logging.basicConfig(level=logging.INFO)
