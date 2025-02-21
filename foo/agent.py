@@ -8,7 +8,6 @@ import requests
 from agentcore.models import V1UserProfile
 from agentdesk import Desktop
 from devicebay import Device
-from orign import ReplayBuffer, V1MSSwiftBufferParams
 from orign.config import GlobalConfig
 from pydantic import BaseModel
 from rich.console import Console
@@ -28,6 +27,20 @@ from toolfuse.util import AgentUtils
 
 from .actor.base import Actor, Step
 from .actor.orign import OrignActor
+from .buffer import (
+    create_actor_sft_buffer,
+    create_base_actor_sft_buffer,
+    create_base_val_sft_buffer,
+    create_description_annot_sft_buffer,
+    create_reason_annot_sft_buffer,
+    create_val_sft_buffer,
+    create_validation_annot_sft_buffer,
+)
+from .prompt import (
+    create_swift_description_prompt,
+    create_swift_reason_prompt,
+    create_swift_validation_prompt,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger: Final = logging.getLogger(__name__)
@@ -77,59 +90,16 @@ class Foo(TaskAgent):
         print("actor_adapter: ", actor_adapter)
         print("val_adapter: ", val_adapter)
 
-        actor_sft_buffer = ReplayBuffer(
-            name=actor_adapter,
-            vram_request="40Gi",
-            train_every=30,
-            sample_n=100,
-            sample_strategy="LatestWithRandom",
-            ms_swift_params=V1MSSwiftBufferParams(
-                model="Qwen/Qwen2.5-VL-7B-Instruct",
-                model_type="qwen2_5_vl",
-                train_type="lora",
-                deepspeed="zero3",
-                torch_dtype="bfloat16",
-                max_length=8192,
-                val_split_ratio=1.0,
-                num_train_epochs=1,
-                eval_strategy="no",
-                save_strategy="epoch",
-                save_total_limit=3,
-                lora_rank=64,
-                lora_alpha=128,
-                size_factor=28,
-                max_pixels=1025000,
-                freeze_vit=True,
-            ),
-            config=orign_config,
-        )
-
-        val_sft_buffer = ReplayBuffer(
-            name=val_adapter,
-            vram_request="40Gi",
-            train_every=30,
-            sample_n=100,
-            sample_strategy="LatestWithRandom",
-            ms_swift_params=V1MSSwiftBufferParams(
-                model="Qwen/Qwen2.5-VL-7B-Instruct",
-                model_type="qwen2_5_vl",
-                train_type="lora",
-                deepspeed="zero3_offload",
-                torch_dtype="bfloat16",
-                max_length=16384,
-                val_split_ratio=1.0,
-                num_train_epochs=1,
-                eval_strategy="no",
-                save_strategy="epoch",
-                save_total_limit=3,
-                lora_rank=64,
-                lora_alpha=128,
-                size_factor=28,
-                max_pixels=1025000,
-                freeze_vit=True,
-            ),
-            config=orign_config,
-        )
+        ###
+        # Create all the buffers!
+        ###
+        actor_sft_buffer = create_actor_sft_buffer(actor_adapter, orign_config)
+        base_actor_sft_buffer = create_base_actor_sft_buffer(orign_config)
+        val_sft_buffer = create_val_sft_buffer(val_adapter, orign_config)
+        base_val_sft_buffer = create_base_val_sft_buffer(orign_config)
+        reason_annot_sft_buffer = create_reason_annot_sft_buffer(orign_config)
+        validation_annot_sft_buffer = create_validation_annot_sft_buffer(orign_config)
+        description_annot_sft_buffer = create_description_annot_sft_buffer(orign_config)
 
         print("\n----\nchecking task: ", task.id)
 
@@ -143,6 +113,11 @@ class Foo(TaskAgent):
 
         send_val = []
         send_actor = []
+        send_base_val = []
+        send_base_actor = []
+        send_reason_annot = []
+        send_validation_annot = []
+        send_description_annot = []
 
         console.print("getting actor...")
         actor = self.get_actor(api_key=task.auth_token)
@@ -182,57 +157,45 @@ class Foo(TaskAgent):
                 console.print("no images", style="red")
                 continue
 
-            image_url = action.state.images[-1]
-
-            # else:
-            #     if not isinstance(action.prompt, ChatResponse):
-            #         console.print("not a chat response", style="white")
-            #         continue
-
-            #     prompt: V1ChatEvent = action.prompt  # type: ignore
-            #     if not prompt.request.prompt:
-            #         console.print("no prompt", style="white")
-            #         continue
-
-            #     if not prompt.request.prompt.messages:
-            #         console.print("no messages", style="red")
-            #         continue
-
-            #     if not prompt.request.prompt.messages[0].content or not isinstance(
-            #         prompt.request.prompt.messages[0].content, list
-            #     ):
-            #         console.print("no content", style="red")
-            #         continue
-
-            #     if not prompt.request.prompt.messages[0].content[0].text:
-            #         console.print("no text", style="red")
-            #         continue
-
-            #     if not prompt.request.prompt.messages[0].content[1].image_url:
-            #         console.print("no image url", style="red")
-            #         continue
-
-            #     content = prompt.request.prompt.messages[0].content[0].text
-            #     image_url = prompt.request.prompt.messages[0].content[1].image_url
+            before_state = action.state.images[-1]
 
             reason = None
             reason_update = None
+            reason_best = None
 
             validation = None
             validation_update = None
+            validation_best = None
+
+            description = None
+            description_update = None
+            description_best = None
+
             for reviewable in action.reviewables:
                 if isinstance(reviewable, AnnotationReviewable):
                     if reviewable.key == "reason":
                         reason = reviewable.value
+                        reason_best = reason
                         for review in reviewable.reviews:
                             if review.correction and review.reviewer_type == "human":
                                 reason_update = review.correction
+                                reason_best = reason_update
                                 break
                     elif reviewable.key == "validation":
                         validation = reviewable.value
+                        validation_best = validation
                         for review in reviewable.reviews:
                             if review.correction and review.reviewer_type == "human":
                                 validation_update = review.correction
+                                validation_best = validation_update
+                                break
+                    elif reviewable.key == "description":
+                        description = reviewable.value
+                        description_best = description
+                        for review in reviewable.reviews:
+                            if review.correction and review.reviewer_type == "human":
+                                description_update = review.correction
+                                description_best = description_update
                                 break
 
             console.print("reason: ", reason)
@@ -269,15 +232,71 @@ class Foo(TaskAgent):
                             "content": response,
                         },
                     ],
-                    "images": [image_url],
+                    "images": [before_state],
                 }
 
                 console.print("adding to actor buffer: ", swift_prompt)
                 # console.print("orignal prompt: ", prompt.model_dump())
-
                 send_actor.append(swift_prompt)
+                send_base_actor.append(swift_prompt)
+
+                if i + 1 < len(task.episode.actions):
+                    next_action = task.episode.actions[i + 1]
+                else:
+                    console.print("no next action", style="red")
+                    continue
+                if not next_action.state.images:
+                    console.print("no next state images", style="red")
+                    continue
+
+                end_state = next_action.state.images[0]
+
+                if not task.description:
+                    raise ValueError("Task description not set")
+
+                if description_best:
+                    description_swift_prompt = create_swift_description_prompt(
+                        image1=before_state,
+                        image2=end_state,
+                        action=action_str,
+                        answer=description_best,
+                    )
+
+                    console.print(
+                        "adding to description annot buffer: ", description_swift_prompt
+                    )
+                    send_description_annot.append(description_swift_prompt)
+
+                if reason_best:
+                    reason_swift_prompt = create_swift_reason_prompt(
+                        image1=before_state,
+                        image2=end_state,
+                        action=action_str,
+                        task_description=task.description,
+                        answer=reason_best,
+                    )
+
+                    console.print(
+                        "adding to reason annot buffer: ", reason_swift_prompt
+                    )
+                    send_reason_annot.append(reason_swift_prompt)
+
+                if validation_best:
+                    validation_swift_prompt = create_swift_validation_prompt(
+                        image1=before_state,
+                        image2=end_state,
+                        action=action_str,
+                        task_description=task.description,
+                        answer=validation_best,
+                    )
+
+                    console.print(
+                        "adding to validation annot buffer: ", validation_swift_prompt
+                    )
+                    send_validation_annot.append(validation_swift_prompt)
 
             if validation:
+                console.print("adding to val sft buffer...")
                 val_ctx = (
                     "You are a helpful assistant judging if actions taken on a computer are correct. \n"
                     f"You are given a task to complete: '{task.description}'\n"
@@ -316,15 +335,38 @@ class Foo(TaskAgent):
                         {"role": "user", "content": val_ctx},
                         {"role": "assistant", "content": response},
                     ],
-                    "images": [image_url, end_state],
+                    "images": [before_state, end_state],
                 }
                 console.print("adding to val buffer: ", val_swift_prompt)
                 send_val.append(val_swift_prompt)
 
-        console.print("sending to val buffer...")
-        val_sft_buffer.send(send_val)
-        console.print("sending to actor buffer...")
-        actor_sft_buffer.send(send_actor)
+        if send_val:
+            console.print("sending to val sft buffer...")
+            val_sft_buffer.send(send_val)
+
+        if send_actor:
+            console.print("sending to actor sft buffer...")
+            actor_sft_buffer.send(send_actor)
+
+        if send_base_actor:
+            console.print("sending to base actor sft buffer...")
+            base_actor_sft_buffer.send(send_base_actor)
+
+        if send_base_val:
+            console.print("sending to base val sft buffer...")
+            base_val_sft_buffer.send(send_base_val)
+
+        if send_reason_annot:
+            console.print("sending to reason annot sft buffer...")
+            reason_annot_sft_buffer.send(send_reason_annot)
+
+        if send_validation_annot:
+            console.print("sending to validation annot sft buffer...")
+            validation_annot_sft_buffer.send(send_validation_annot)
+
+        if send_description_annot:
+            console.print("sending to description annot sft buffer...")
+            description_annot_sft_buffer.send(send_description_annot)
 
     def solve_task(
         self,
