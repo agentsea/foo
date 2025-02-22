@@ -1,7 +1,9 @@
 from orign import GlobalConfig, ReplayBuffer, V1MSSwiftBufferParams
 
 
-def create_actor_sft_buffer(name: str, orign_config: GlobalConfig) -> ReplayBuffer:
+def create_actor_sft_buffer(
+    name: str, skill_id: str, orign_config: GlobalConfig
+) -> ReplayBuffer:
     """Actor model for this skill"""
 
     actor_sft_buffer = ReplayBuffer(
@@ -28,12 +30,15 @@ def create_actor_sft_buffer(name: str, orign_config: GlobalConfig) -> ReplayBuff
             max_pixels=1025000,
             freeze_vit=True,
         ),
+        labels={"skill": skill_id},
         config=orign_config,
     )
     return actor_sft_buffer
 
 
-def create_base_actor_sft_buffer(orign_config: GlobalConfig) -> ReplayBuffer:
+def create_base_actor_sft_buffer(
+    skill_id: str, orign_config: GlobalConfig
+) -> ReplayBuffer:
     """Base actor model"""
 
     actor_sft_buffer = ReplayBuffer(
@@ -60,12 +65,15 @@ def create_base_actor_sft_buffer(orign_config: GlobalConfig) -> ReplayBuffer:
             max_pixels=1025000,
             freeze_vit=True,
         ),
+        labels={"skill": skill_id},
         config=orign_config,
     )
     return actor_sft_buffer
 
 
-def create_val_sft_buffer(name: str, orign_config: GlobalConfig) -> ReplayBuffer:
+def create_val_sft_buffer(
+    name: str, skill_id: str, orign_config: GlobalConfig
+) -> ReplayBuffer:
     """Validation model for this skill"""
 
     val_sft_buffer = ReplayBuffer(
@@ -93,11 +101,14 @@ def create_val_sft_buffer(name: str, orign_config: GlobalConfig) -> ReplayBuffer
             freeze_vit=True,
         ),
         config=orign_config,
+        labels={"skill": skill_id},
     )
     return val_sft_buffer
 
 
-def create_base_val_sft_buffer(orign_config: GlobalConfig) -> ReplayBuffer:
+def create_base_val_sft_buffer(
+    skill_id: str, orign_config: GlobalConfig
+) -> ReplayBuffer:
     """Base validation model"""
 
     val_sft_buffer = ReplayBuffer(
@@ -125,11 +136,14 @@ def create_base_val_sft_buffer(orign_config: GlobalConfig) -> ReplayBuffer:
             freeze_vit=True,
         ),
         config=orign_config,
+        labels={"skill": skill_id},
     )
     return val_sft_buffer
 
 
-def create_reason_annot_sft_buffer(orign_config: GlobalConfig) -> ReplayBuffer:
+def create_reason_annot_sft_buffer(
+    skill_id: str, orign_config: GlobalConfig
+) -> ReplayBuffer:
     """Reason annotation model for demonstrations"""
 
     val_sft_buffer = ReplayBuffer(
@@ -157,11 +171,14 @@ def create_reason_annot_sft_buffer(orign_config: GlobalConfig) -> ReplayBuffer:
             freeze_vit=True,
         ),
         config=orign_config,
+        labels={"skill": skill_id},
     )
     return val_sft_buffer
 
 
-def create_validation_annot_sft_buffer(orign_config: GlobalConfig) -> ReplayBuffer:
+def create_validation_annot_sft_buffer(
+    skill_id: str, orign_config: GlobalConfig
+) -> ReplayBuffer:
     """Validation annotation model for demonstrations"""
 
     val_sft_buffer = ReplayBuffer(
@@ -189,11 +206,14 @@ def create_validation_annot_sft_buffer(orign_config: GlobalConfig) -> ReplayBuff
             freeze_vit=True,
         ),
         config=orign_config,
+        labels={"skill": skill_id},
     )
     return val_sft_buffer
 
 
-def create_description_annot_sft_buffer(orign_config: GlobalConfig) -> ReplayBuffer:
+def create_description_annot_sft_buffer(
+    skill_id: str, orign_config: GlobalConfig
+) -> ReplayBuffer:
     """Description annotation model for demonstrations"""
 
     val_sft_buffer = ReplayBuffer(
@@ -221,5 +241,6 @@ def create_description_annot_sft_buffer(orign_config: GlobalConfig) -> ReplayBuf
             freeze_vit=True,
         ),
         config=orign_config,
+        labels={"skill": skill_id},
     )
     return val_sft_buffer

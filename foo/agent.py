@@ -93,13 +93,19 @@ class Foo(TaskAgent):
         ###
         # Create all the buffers!
         ###
-        actor_sft_buffer = create_actor_sft_buffer(actor_adapter, orign_config)
-        base_actor_sft_buffer = create_base_actor_sft_buffer(orign_config)
-        val_sft_buffer = create_val_sft_buffer(val_adapter, orign_config)
-        base_val_sft_buffer = create_base_val_sft_buffer(orign_config)
-        reason_annot_sft_buffer = create_reason_annot_sft_buffer(orign_config)
-        validation_annot_sft_buffer = create_validation_annot_sft_buffer(orign_config)
-        description_annot_sft_buffer = create_description_annot_sft_buffer(orign_config)
+        actor_sft_buffer = create_actor_sft_buffer(
+            actor_adapter, skill.id, orign_config
+        )
+        base_actor_sft_buffer = create_base_actor_sft_buffer(skill.id, orign_config)
+        val_sft_buffer = create_val_sft_buffer(val_adapter, skill.id, orign_config)
+        base_val_sft_buffer = create_base_val_sft_buffer(skill.id, orign_config)
+        reason_annot_sft_buffer = create_reason_annot_sft_buffer(skill.id, orign_config)
+        validation_annot_sft_buffer = create_validation_annot_sft_buffer(
+            skill.id, orign_config
+        )
+        description_annot_sft_buffer = create_description_annot_sft_buffer(
+            skill.id, orign_config
+        )
 
         print("\n----\nchecking task: ", task.id)
 
