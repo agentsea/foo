@@ -33,12 +33,19 @@ from toolfuse.util import AgentUtils
 from .actor.base import Actor, Step
 from .actor.orign import OrignActor
 from .buffer import (
+    create_actor_dpo_buffer,
     create_actor_sft_buffer,
+    create_base_actor_dpo_buffer,
     create_base_actor_sft_buffer,
+    create_base_val_dpo_buffer,
     create_base_val_sft_buffer,
+    create_description_annot_dpo_buffer,
     create_description_annot_sft_buffer,
+    create_reason_annot_dpo_buffer,
     create_reason_annot_sft_buffer,
+    create_val_dpo_buffer,
     create_val_sft_buffer,
+    create_validation_annot_dpo_buffer,
     create_validation_annot_sft_buffer,
 )
 
@@ -83,6 +90,9 @@ class Foo(TaskAgent):
 
         if not task.owner_id:
             raise ValueError("Task owner_id not set")
+
+        if not user:
+            raise ValueError("User not set")
 
         actor_adapter = self.get_actor_adapter_name(skill, task.owner_id, user)
         val_adapter = self.get_val_adapter_name(skill, task.owner_id, user)
@@ -436,6 +446,9 @@ class Foo(TaskAgent):
             if not task.owner_id:
                 raise ValueError("Task owner_id not set")
 
+            if not user:
+                raise ValueError("User not set")
+
             adapter = self.get_actor_adapter_name(skill, task.owner_id, user)
             print("adapter: ", adapter)
 
@@ -594,15 +607,38 @@ class Foo(TaskAgent):
         self, skill: Skill, owner_id: str, user: V1UserProfile
     ) -> str:
         if "@" in owner_id:  # TODO: yuck, user owner_id in the adapter to specify
-            owner_id = user.handle  # type: ignore
-        return f"{owner_id}/{skill.name.lower().replace(' ', '-')}-act"  # type: ignore
+            namespace = user.handle  # type: ignore
+        else:
+            owner_id = owner_id
+            if not user.organizations:
+                raise ValueError("User has no organizations")
+
+            if owner_id not in user.organizations.keys():
+                raise ValueError(
+                    f"User {user.handle} does not have access to organization {owner_id}"
+                )
+            org_info = user.organizations[owner_id]
+            namespace = org_info["org_name"]
+
+        return f"{namespace}/{skill.name.lower().replace(' ', '-')}-act"  # type: ignore
 
     def get_val_adapter_name(
         self, skill: Skill, owner_id: str, user: V1UserProfile
     ) -> str:
         if "@" in owner_id:
-            owner_id = user.handle  # type: ignore
-        return f"{owner_id}/{skill.name.lower().replace(' ', '-')}-validate"  # type: ignore
+            namespace = user.handle  # type: ignore
+        else:
+            if not user.organizations:
+                raise ValueError("User has no organizations")
+
+            if owner_id not in user.organizations.keys():
+                raise ValueError(
+                    f"User {user.handle} does not have access to organization {owner_id}"
+                )
+            org_info = user.organizations[owner_id]
+            namespace = org_info["org_name"]
+
+        return f"{namespace}/{skill.name.lower().replace(' ', '-')}-validate"  # type: ignore
 
     def get_skill(self, task: Task) -> Skill:
         skill_id = None
