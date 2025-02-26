@@ -106,14 +106,33 @@ class Foo(TaskAgent):
         actor_sft_buffer = create_actor_sft_buffer(
             actor_adapter, skill.id, orign_config
         )
+        actor_dpo_buffer = create_actor_dpo_buffer(
+            actor_adapter, skill.id, orign_config
+        )
+
         base_actor_sft_buffer = create_base_actor_sft_buffer(skill.id, orign_config)
+        base_actor_dpo_buffer = create_base_actor_dpo_buffer(skill.id, orign_config)
+
         val_sft_buffer = create_val_sft_buffer(val_adapter, skill.id, orign_config)
+        val_dpo_buffer = create_val_dpo_buffer(val_adapter, skill.id, orign_config)
+
         base_val_sft_buffer = create_base_val_sft_buffer(skill.id, orign_config)
+        base_val_dpo_buffer = create_base_val_dpo_buffer(skill.id, orign_config)
+
         reason_annot_sft_buffer = create_reason_annot_sft_buffer(skill.id, orign_config)
+        reason_annot_dpo_buffer = create_reason_annot_dpo_buffer(skill.id, orign_config)
+
         validation_annot_sft_buffer = create_validation_annot_sft_buffer(
             skill.id, orign_config
         )
+        validation_annot_dpo_buffer = create_validation_annot_dpo_buffer(
+            skill.id, orign_config
+        )
+
         description_annot_sft_buffer = create_description_annot_sft_buffer(
+            skill.id, orign_config
+        )
+        description_annot_dpo_buffer = create_description_annot_dpo_buffer(
             skill.id, orign_config
         )
 
@@ -127,13 +146,21 @@ class Foo(TaskAgent):
             console.print("no episode", style="red")
             raise ValueError("Task has no episode")
 
-        send_val = []
-        send_actor = []
-        send_base_val = []
-        send_base_actor = []
-        send_reason_annot = []
-        send_validation_annot = []
-        send_description_annot = []
+        send_val_sft = []
+        send_actor_sft = []
+        send_base_val_sft = []
+        send_base_actor_sft = []
+        send_reason_annot_sft = []
+        send_validation_annot_sft = []
+        send_description_annot_sft = []
+
+        send_val_dpo = []
+        send_actor_dpo = []
+        send_base_val_dpo = []
+        send_base_actor_dpo = []
+        send_reason_annot_dpo = []
+        send_validation_annot_dpo = []
+        send_description_annot_dpo = []
 
         console.print("getting actor...")
         actor = self.get_actor(api_key=task.auth_token)
@@ -253,8 +280,12 @@ class Foo(TaskAgent):
 
                 console.print("adding to actor buffer: ", swift_prompt)
                 # console.print("orignal prompt: ", prompt.model_dump())
-                send_actor.append(swift_prompt)
-                send_base_actor.append(swift_prompt)
+
+                # {"messages": [{"role": "system", "content": "You are a useful and harmless assistant"}, {"role": "user", "content": "Tell me tomorrow's weather"}, {"role": "assistant", "content": "Tomorrow's weather will be sunny"}], "rejected_response": "I don't know"}
+                # {"messages": [{"role": "system", "content": "You are a useful and harmless math calculator"}, {"role": "user", "content": "What is 1 + 1?"}, {"role": "assistant", "content": "It equals 2"}, {"role": "user", "content": "What about adding 1?"}, {"role": "assistant", "content": "It equals 3"}], "rejected_response": "I don't know"}
+
+                send_actor_sft.append(swift_prompt)
+                send_base_actor_sft.append(swift_prompt)
 
                 if i + 1 < len(task.episode.actions):
                     next_action = task.episode.actions[i + 1]
@@ -281,7 +312,7 @@ class Foo(TaskAgent):
                     console.print(
                         "adding to description annot buffer: ", description_swift_prompt
                     )
-                    send_description_annot.append(description_swift_prompt)
+                    send_description_annot_sft.append(description_swift_prompt)
 
                 if reason_best:
                     reason_swift_prompt = create_swift_reason_prompt(
@@ -295,7 +326,7 @@ class Foo(TaskAgent):
                     console.print(
                         "adding to reason annot buffer: ", reason_swift_prompt
                     )
-                    send_reason_annot.append(reason_swift_prompt)
+                    send_reason_annot_sft.append(reason_swift_prompt)
 
                 if validation_best:
                     validation_swift_prompt = create_swift_validation_prompt(
@@ -309,7 +340,7 @@ class Foo(TaskAgent):
                     console.print(
                         "adding to validation annot buffer: ", validation_swift_prompt
                     )
-                    send_validation_annot.append(validation_swift_prompt)
+                    send_validation_annot_sft.append(validation_swift_prompt)
 
             if validation:
                 console.print("adding to val sft buffer...")
@@ -354,35 +385,35 @@ class Foo(TaskAgent):
                     "images": [before_state, end_state],
                 }
                 console.print("adding to val buffer: ", val_swift_prompt)
-                send_val.append(val_swift_prompt)
+                send_val_sft.append(val_swift_prompt)
 
-        if send_val:
+        if send_val_sft:
             console.print("sending to val sft buffer...")
-            val_sft_buffer.send(send_val)
+            val_sft_buffer.send(send_val_sft)
 
-        if send_actor:
+        if send_actor_sft:
             console.print("sending to actor sft buffer...")
-            actor_sft_buffer.send(send_actor)
+            actor_sft_buffer.send(send_actor_sft)
 
-        if send_base_actor:
+        if send_base_actor_sft:
             console.print("sending to base actor sft buffer...")
-            base_actor_sft_buffer.send(send_base_actor)
+            base_actor_sft_buffer.send(send_base_actor_sft)
 
-        if send_base_val:
+        if send_base_val_sft:
             console.print("sending to base val sft buffer...")
-            base_val_sft_buffer.send(send_base_val)
+            base_val_sft_buffer.send(send_base_val_sft)
 
-        if send_reason_annot:
+        if send_reason_annot_sft:
             console.print("sending to reason annot sft buffer...")
-            reason_annot_sft_buffer.send(send_reason_annot)
+            reason_annot_sft_buffer.send(send_reason_annot_sft)
 
-        if send_validation_annot:
+        if send_validation_annot_sft:
             console.print("sending to validation annot sft buffer...")
-            validation_annot_sft_buffer.send(send_validation_annot)
+            validation_annot_sft_buffer.send(send_validation_annot_sft)
 
-        if send_description_annot:
+        if send_description_annot_sft:
             console.print("sending to description annot sft buffer...")
-            description_annot_sft_buffer.send(send_description_annot)
+            description_annot_sft_buffer.send(send_description_annot_sft)
 
     def solve_task(
         self,
@@ -609,7 +640,6 @@ class Foo(TaskAgent):
         if "@" in owner_id:  # TODO: yuck, user owner_id in the adapter to specify
             namespace = user.handle  # type: ignore
         else:
-            owner_id = owner_id
             if not user.organizations:
                 raise ValueError("User has no organizations")
 
