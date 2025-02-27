@@ -244,9 +244,15 @@ class Foo(TaskAgent):
 
             console.print("reason: ", reason)
             console.print("validation: ", validation)
+            console.print("description: ", description)
 
             console.print("reason_update: ", reason_update)
             console.print("validation_update: ", validation_update)
+            console.print("description_update: ", description_update)
+
+            console.print("reason_best: ", reason_best)
+            console.print("validation_best: ", validation_best)
+            console.print("description_best: ", description_best)
 
             if not reason:
                 console.print("no reason", style="red")
@@ -257,6 +263,9 @@ class Foo(TaskAgent):
                 response_reason = reason_update
 
             if reason_update:
+                console.print(
+                    "adding to reason annot dpo buffer: ", response_reason, reason
+                )
                 swift_reason_dpo_prompt = {
                     "messages": [
                         {
@@ -271,6 +280,7 @@ class Foo(TaskAgent):
                     "images": [before_state],
                     "rejected_response": reason,
                 }
+
                 send_actor_dpo.append(swift_reason_dpo_prompt)
                 send_base_actor_dpo.append(swift_reason_dpo_prompt)
 
@@ -308,6 +318,9 @@ class Foo(TaskAgent):
                     send_reason_annot_sft.append(reason_swift_prompt)
 
                 if reason_update:
+                    console.print(
+                        "adding to reason annot dpo buffer: ", reason_best, reason
+                    )
                     reason_swift_prompt["rejected_response"] = reason
                     send_reason_annot_dpo.append(reason_swift_prompt)
 
@@ -326,6 +339,11 @@ class Foo(TaskAgent):
                     send_description_annot_sft.append(description_swift_prompt)
 
                 if description_update:
+                    console.print(
+                        "adding to description annot dpo buffer: ",
+                        description_best,
+                        description,
+                    )
                     description_swift_prompt["rejected_response"] = description
                     send_description_annot_dpo.append(description_swift_prompt)
 
@@ -345,6 +363,11 @@ class Foo(TaskAgent):
                     send_validation_annot_sft.append(validation_swift_prompt)
 
                 if validation_update:
+                    console.print(
+                        "adding to validation annot dpo buffer: ",
+                        validation_best,
+                        validation,
+                    )
                     validation_swift_prompt["rejected_response"] = validation
                     send_validation_annot_dpo.append(validation_swift_prompt)
 
@@ -457,6 +480,11 @@ class Foo(TaskAgent):
                 send_val_sft.append(val_ctx_reason_swift_prompt)
 
                 if validation_update:
+                    console.print(
+                        "adding to val dpo buffer: ",
+                        validation_best,
+                        validation,
+                    )
                     val_ctx_reason_swift_prompt["rejected_response"] = validation  # type: ignore
                     send_val_dpo.append(val_ctx_reason_swift_prompt)
 
