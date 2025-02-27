@@ -252,15 +252,103 @@ class Foo(TaskAgent):
                 console.print("no reason", style="red")
                 continue
 
-            if approved:
-                response_reason = reason
-                if reason_update:
-                    response_reason = reason_update
+            response_reason = reason
+            if reason_update:
+                response_reason = reason_update
 
-                action_str = action.action.model_dump_json(
-                    exclude_unset=True, exclude_none=True, exclude_defaults=True
+            if reason_update:
+                swift_reason_dpo_prompt = {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": reason_content + " <image>",
+                        },
+                        {
+                            "role": "assistant",
+                            "content": response_reason,
+                        },
+                    ],
+                    "images": [before_state],
+                    "rejected_response": reason,
+                }
+                send_actor_dpo.append(swift_reason_dpo_prompt)
+                send_base_actor_dpo.append(swift_reason_dpo_prompt)
+
+            action_str = action.action.model_dump_json(
+                exclude_unset=True, exclude_none=True, exclude_defaults=True
+            )
+
+            if i + 1 < len(task.episode.actions):
+                next_action = task.episode.actions[i + 1]
+            else:
+                console.print("no next action", style="red")
+                continue
+            if not next_action.state.images:
+                console.print("no next state images", style="red")
+                continue
+
+            end_state = next_action.state.images[0]
+
+            if not task.description:
+                raise ValueError("Task description not set")
+
+            if reason_best:
+                reason_swift_prompt = create_swift_reason_prompt(
+                    image1=before_state,
+                    image2=end_state,
+                    action=action_str,
+                    task_description=task.description,
+                    answer=reason_best,
                 )
 
+                if approved:
+                    console.print(
+                        "adding to reason annot buffer: ", reason_swift_prompt
+                    )
+                    send_reason_annot_sft.append(reason_swift_prompt)
+
+                if reason_update:
+                    reason_swift_prompt["rejected_response"] = reason
+                    send_reason_annot_dpo.append(reason_swift_prompt)
+
+            if description_best:
+                description_swift_prompt = create_swift_description_prompt(
+                    image1=before_state,
+                    image2=end_state,
+                    action=action_str,
+                    answer=description_best,
+                )
+
+                if approved:
+                    console.print(
+                        "adding to description annot buffer: ", description_swift_prompt
+                    )
+                    send_description_annot_sft.append(description_swift_prompt)
+
+                if description_update:
+                    description_swift_prompt["rejected_response"] = description
+                    send_description_annot_dpo.append(description_swift_prompt)
+
+            if validation_best:
+                validation_swift_prompt = create_swift_validation_prompt(
+                    image1=before_state,
+                    image2=end_state,
+                    action=action_str,
+                    task_description=task.description,
+                    answer=validation_best,
+                )
+
+                if approved:
+                    console.print(
+                        "adding to validation annot buffer: ", validation_swift_prompt
+                    )
+                    send_validation_annot_sft.append(validation_swift_prompt)
+
+                if validation_update:
+                    validation_swift_prompt["rejected_response"] = validation
+                    send_validation_annot_dpo.append(validation_swift_prompt)
+
+            if approved:
                 response = (
                     f"<think>{response_reason}</think><answer>{action_str}</answer>"
                 )
@@ -298,95 +386,10 @@ class Foo(TaskAgent):
                 send_base_actor_sft.append(swift_prompt)
                 send_base_actor_sft.append(swift_reason_prompt)
 
-                if reason_update:
-                    swift_reason_dpo_prompt = {
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": reason_content + " <image>",
-                            },
-                            {
-                                "role": "assistant",
-                                "content": response_reason,
-                            },
-                        ],
-                        "images": [before_state],
-                        "rejected_response": reason,
-                    }
-                    send_actor_dpo.append(swift_reason_dpo_prompt)
-                    send_base_actor_dpo.append(swift_reason_dpo_prompt)
-
                 console.print("adding to actor buffer: ", swift_prompt)
                 # console.print("orignal prompt: ", prompt.model_dump())
 
                 # {"messages": [{"role": "system", "content": "You are a useful and harmless math calculator"}, {"role": "user", "content": "What is 1 + 1?"}, {"role": "assistant", "content": "It equals 2"}, {"role": "user", "content": "What about adding 1?"}, {"role": "assistant", "content": "It equals 3"}], "rejected_response": "I don't know"}
-
-                if i + 1 < len(task.episode.actions):
-                    next_action = task.episode.actions[i + 1]
-                else:
-                    console.print("no next action", style="red")
-                    continue
-                if not next_action.state.images:
-                    console.print("no next state images", style="red")
-                    continue
-
-                end_state = next_action.state.images[0]
-
-                if not task.description:
-                    raise ValueError("Task description not set")
-
-                if description_best:
-                    description_swift_prompt = create_swift_description_prompt(
-                        image1=before_state,
-                        image2=end_state,
-                        action=action_str,
-                        answer=description_best,
-                    )
-
-                    console.print(
-                        "adding to description annot buffer: ", description_swift_prompt
-                    )
-                    send_description_annot_sft.append(description_swift_prompt)
-
-                    if description_update:
-                        description_swift_prompt["rejected_response"] = description
-                        send_description_annot_dpo.append(description_swift_prompt)
-
-                if reason_best:
-                    reason_swift_prompt = create_swift_reason_prompt(
-                        image1=before_state,
-                        image2=end_state,
-                        action=action_str,
-                        task_description=task.description,
-                        answer=reason_best,
-                    )
-
-                    console.print(
-                        "adding to reason annot buffer: ", reason_swift_prompt
-                    )
-                    send_reason_annot_sft.append(reason_swift_prompt)
-
-                    if reason_update:
-                        reason_swift_prompt["rejected_response"] = reason
-                        send_reason_annot_dpo.append(reason_swift_prompt)
-
-                if validation_best:
-                    validation_swift_prompt = create_swift_validation_prompt(
-                        image1=before_state,
-                        image2=end_state,
-                        action=action_str,
-                        task_description=task.description,
-                        answer=validation_best,
-                    )
-
-                    console.print(
-                        "adding to validation annot buffer: ", validation_swift_prompt
-                    )
-                    send_validation_annot_sft.append(validation_swift_prompt)
-
-                    if validation_update:
-                        validation_swift_prompt["rejected_response"] = validation
-                        send_validation_annot_dpo.append(validation_swift_prompt)
 
             if validation:
                 console.print("adding to val sft buffer...")

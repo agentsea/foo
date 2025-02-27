@@ -207,5 +207,5 @@ class OrignActor(Actor[Desktop]):
             "based on this image, you will reason about what you should do next to complete the task.\n"
             "Please return your reasoning as a plain text response."
             "For example, if the task is 'navigate to airbnb.com' and the screenshot shows a desktop you may reason: "
-            "'I need to open the browser to navigate to airbnb.com, to do that I need to move the cursor over the browser icon. It isn't over that now so I need to move it there.'\n\n"
+            "'I need to open the browser to navigate to airbnb.com, to do that I need to move the cursor over the browser icon. It isn't over that now so I need to move it there.'"
         )
