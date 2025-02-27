@@ -191,10 +191,21 @@ class OrignActor(Actor[Desktop]):
             "You are a helpful assistant operating a computer. \n"
             f"You are given a task to complete: '{task.description}'\n"
             f"You have the following tools at your disposal: {device.json_schema()}\n\n"
-            "I am going to provide you with screenshots of the current state of the computer, "
-            "as well as\na screenshot of the previous state of the computer, with the action that "
-            "was taken to get to the current state.\nUsing those screenshots, you will decide what "
-            "action to take next.\n\nPlease return your response formatted like <think>...</think><answer>...</answer> "
+            "I am going to provide you with a screenshot of the current state of the computer, "
+            "based on this image, you will decide what action to take next.\n"
+            "Please return your response formatted like <think>...</think><answer>...</answer> "
             "where the answer is the action you want to take as a raw JSON object.\n\n"
             "I've provided you with the most recent screenshot of the desktop."
+        )
+
+    def get_reason_ctx(self, task: Task, device: Desktop, history: List[Step]) -> str:
+        return (
+            "You are a helpful assistant operating a computer. \n"
+            f"You are given a task to complete: '{task.description}'\n"
+            f"You have the following tools at your disposal: {device.json_schema()}\n\n"
+            "I am going to provide you with a screenshot of the current state of the computer, "
+            "based on this image, you will reason about what you should do next to complete the task.\n"
+            "Please return your reasoning as a plain text response."
+            "For example, if the task is 'navigate to airbnb.com' and the screenshot shows a desktop you may reason: "
+            "'I need to open the browser to navigate to airbnb.com, to do that I need to move the cursor over the browser icon. It isn't over that now so I need to move it there.'\n\n"
         )

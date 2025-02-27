@@ -172,6 +172,7 @@ class Foo(TaskAgent):
 
         console.print("getting ctx...")
         content = actor.get_ctx(task, device, [])
+        reason_content = actor.get_reason_ctx(task, device, [])
         console.print("got ctx")
 
         for i, action in enumerate(task.episode.actions):
@@ -278,14 +279,47 @@ class Foo(TaskAgent):
                     "images": [before_state],
                 }
 
+                swift_reason_prompt = {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": reason_content + " <image>",
+                        },
+                        {
+                            "role": "assistant",
+                            "content": response_reason,
+                        },
+                    ],
+                    "images": [before_state],
+                }
+
+                send_actor_sft.append(swift_prompt)
+                send_actor_sft.append(swift_reason_prompt)
+                send_base_actor_sft.append(swift_prompt)
+                send_base_actor_sft.append(swift_reason_prompt)
+
+                if reason_update:
+                    swift_reason_dpo_prompt = {
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": reason_content + " <image>",
+                            },
+                            {
+                                "role": "assistant",
+                                "content": response_reason,
+                            },
+                        ],
+                        "images": [before_state],
+                        "rejected_response": reason,
+                    }
+                    send_actor_dpo.append(swift_reason_dpo_prompt)
+                    send_base_actor_dpo.append(swift_reason_dpo_prompt)
+
                 console.print("adding to actor buffer: ", swift_prompt)
                 # console.print("orignal prompt: ", prompt.model_dump())
 
-                # {"messages": [{"role": "system", "content": "You are a useful and harmless assistant"}, {"role": "user", "content": "Tell me tomorrow's weather"}, {"role": "assistant", "content": "Tomorrow's weather will be sunny"}], "rejected_response": "I don't know"}
                 # {"messages": [{"role": "system", "content": "You are a useful and harmless math calculator"}, {"role": "user", "content": "What is 1 + 1?"}, {"role": "assistant", "content": "It equals 2"}, {"role": "user", "content": "What about adding 1?"}, {"role": "assistant", "content": "It equals 3"}], "rejected_response": "I don't know"}
-
-                send_actor_sft.append(swift_prompt)
-                send_base_actor_sft.append(swift_prompt)
 
                 if i + 1 < len(task.episode.actions):
                     next_action = task.episode.actions[i + 1]
@@ -314,6 +348,10 @@ class Foo(TaskAgent):
                     )
                     send_description_annot_sft.append(description_swift_prompt)
 
+                    if description_update:
+                        description_swift_prompt["rejected_response"] = description
+                        send_description_annot_dpo.append(description_swift_prompt)
+
                 if reason_best:
                     reason_swift_prompt = create_swift_reason_prompt(
                         image1=before_state,
@@ -327,6 +365,10 @@ class Foo(TaskAgent):
                         "adding to reason annot buffer: ", reason_swift_prompt
                     )
                     send_reason_annot_sft.append(reason_swift_prompt)
+
+                    if reason_update:
+                        reason_swift_prompt["rejected_response"] = reason
+                        send_reason_annot_dpo.append(reason_swift_prompt)
 
                 if validation_best:
                     validation_swift_prompt = create_swift_validation_prompt(
@@ -342,6 +384,10 @@ class Foo(TaskAgent):
                     )
                     send_validation_annot_sft.append(validation_swift_prompt)
 
+                    if validation_update:
+                        validation_swift_prompt["rejected_response"] = validation
+                        send_validation_annot_dpo.append(validation_swift_prompt)
+
             if validation:
                 console.print("adding to val sft buffer...")
                 val_ctx = (
@@ -354,6 +400,17 @@ class Foo(TaskAgent):
                     "Using those images, you will decide if the action taken is correct.\n"
                     "Please return your decision in the format <think>...</think><answer>...</answer>\n"
                     "As an answer, please return 'yes' if the action was correct or 'no' if it was incorrect <image> <image>"
+                )
+
+                val_ctx_reason = (
+                    "You are a helpful assistant judging if actions taken on a computer are correct. \n"
+                    f"You are given a task to complete: '{task.description}'\n"
+                    "You just took an action to complete that task. \n"
+                    f"The action was: {action.action.model_dump_json()}\n"
+                    "The first image I've provided you is the state of the computer before the action was taken, "
+                    "and the second image is the state of the computer after the action was taken.\n"
+                    "Using those images, you will reason about why the action was correct or incorrect.\n"
+                    "Please return your reasoning as a plain text response."
                 )
 
                 approved_text = "yes" if approved else "no"
@@ -387,33 +444,67 @@ class Foo(TaskAgent):
                 console.print("adding to val buffer: ", val_swift_prompt)
                 send_val_sft.append(val_swift_prompt)
 
+                val_ctx_reason_swift_prompt = {
+                    "messages": [
+                        {"role": "user", "content": val_ctx_reason},
+                        {"role": "assistant", "content": response_val},
+                    ],
+                    "images": [before_state, end_state],
+                }
+                send_val_sft.append(val_ctx_reason_swift_prompt)
+
+                if validation_update:
+                    val_ctx_reason_swift_prompt["rejected_response"] = validation  # type: ignore
+                    send_val_dpo.append(val_ctx_reason_swift_prompt)
+
         if send_val_sft:
             console.print("sending to val sft buffer...")
-            val_sft_buffer.send(send_val_sft)
+            val_sft_buffer.send(send_val_sft, train=True)
+        if send_val_dpo:
+            console.print("sending to val dpo buffer...")
+            val_dpo_buffer.send(send_val_dpo, train=True)
 
         if send_actor_sft:
             console.print("sending to actor sft buffer...")
-            actor_sft_buffer.send(send_actor_sft)
+            actor_sft_buffer.send(send_actor_sft, train=True)
+        if send_actor_dpo:
+            console.print("sending to actor dpo buffer...")
+            actor_dpo_buffer.send(send_actor_dpo, train=True)
 
         if send_base_actor_sft:
             console.print("sending to base actor sft buffer...")
             base_actor_sft_buffer.send(send_base_actor_sft)
+        if send_base_actor_dpo:
+            console.print("sending to base actor dpo buffer...")
+            base_actor_dpo_buffer.send(send_base_actor_dpo)
 
         if send_base_val_sft:
             console.print("sending to base val sft buffer...")
             base_val_sft_buffer.send(send_base_val_sft)
+        if send_base_val_dpo:
+            console.print("sending to base val dpo buffer...")
+            base_val_dpo_buffer.send(send_base_val_dpo)
 
         if send_reason_annot_sft:
             console.print("sending to reason annot sft buffer...")
             reason_annot_sft_buffer.send(send_reason_annot_sft)
+        if send_reason_annot_dpo:
+            console.print("sending to reason annot dpo buffer...")
+            reason_annot_dpo_buffer.send(send_reason_annot_dpo)
 
         if send_validation_annot_sft:
             console.print("sending to validation annot sft buffer...")
             validation_annot_sft_buffer.send(send_validation_annot_sft)
+        if send_validation_annot_dpo:
+            console.print("sending to validation annot dpo buffer...")
+            validation_annot_dpo_buffer.send(send_validation_annot_dpo)
 
         if send_description_annot_sft:
             console.print("sending to description annot sft buffer...")
             description_annot_sft_buffer.send(send_description_annot_sft)
+        if send_description_annot_dpo:
+            console.print("sending to description annot dpo buffer...")
+            description_annot_dpo_buffer.send(send_description_annot_dpo)
 
     def solve_task(
         self,

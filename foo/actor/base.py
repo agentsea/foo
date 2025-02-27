@@ -45,3 +45,7 @@ class Actor(ABC, Generic[T]):
     @abstractmethod
     def get_ctx(self, task: Task, device: T, history: List[Step]) -> str:
         pass
+
+    @abstractmethod
+    def get_reason_ctx(self, task: Task, device: T, history: List[Step]) -> str:
+        pass
