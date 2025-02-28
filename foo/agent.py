@@ -216,14 +216,16 @@ class Foo(TaskAgent):
             description_best = None
 
             for reviewable in action.reviewables:
-                console.print("\nreviewable: ", reviewable)
+                console.print("\nreviewable: ", reviewable.to_v1().model_dump())
                 if isinstance(reviewable, AnnotationReviewable):
-                    console.print("\nreviewable: ", reviewable)
+                    console.print("\nreviewable: ", reviewable.to_v1().model_dump())
                     if reviewable.key == "reason":
                         reason = reviewable.value
                         reason_best = reason
                         for review in reviewable.reviews:
-                            console.print("\nreason review: ", review)
+                            console.print(
+                                "\nreason review: ", review.to_v1().model_dump()
+                            )
                             if review.correction and review.reviewer_type == "human":
                                 reason_update = review.correction["value"]  # type: ignore
                                 reason_best = reason_update
@@ -232,7 +234,9 @@ class Foo(TaskAgent):
                         validation = reviewable.value
                         validation_best = validation
                         for review in reviewable.reviews:
-                            console.print("\nvalidation review: ", review)
+                            console.print(
+                                "\nvalidation review: ", review.to_v1().model_dump()
+                            )
                             if review.correction and review.reviewer_type == "human":
                                 validation_update = review.correction["value"]  # type: ignore
                                 validation_best = validation_update
@@ -241,7 +245,9 @@ class Foo(TaskAgent):
                         description = reviewable.value
                         description_best = description
                         for review in reviewable.reviews:
-                            console.print("\ndescription review: ", review)
+                            console.print(
+                                "\ndescription review: ", review.to_v1().model_dump()
+                            )
                             if review.correction and review.reviewer_type == "human":
                                 description_update = review.correction["value"]  # type: ignore
                                 description_best = description_update
