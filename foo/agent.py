@@ -216,43 +216,48 @@ class Foo(TaskAgent):
             description_best = None
 
             for reviewable in action.reviewables:
+                console.print("\nreviewable: ", reviewable)
                 if isinstance(reviewable, AnnotationReviewable):
+                    console.print("\nreviewable: ", reviewable)
                     if reviewable.key == "reason":
                         reason = reviewable.value
                         reason_best = reason
                         for review in reviewable.reviews:
+                            console.print("\nreason review: ", review)
                             if review.correction and review.reviewer_type == "human":
-                                reason_update = review.correction
+                                reason_update = review.correction["value"]  # type: ignore
                                 reason_best = reason_update
                                 break
                     elif reviewable.key == "validation":
                         validation = reviewable.value
                         validation_best = validation
                         for review in reviewable.reviews:
+                            console.print("\nvalidation review: ", review)
                             if review.correction and review.reviewer_type == "human":
-                                validation_update = review.correction
+                                validation_update = review.correction["value"]  # type: ignore
                                 validation_best = validation_update
                                 break
                     elif reviewable.key == "description":
                         description = reviewable.value
                         description_best = description
                         for review in reviewable.reviews:
+                            console.print("\ndescription review: ", review)
                             if review.correction and review.reviewer_type == "human":
-                                description_update = review.correction
+                                description_update = review.correction["value"]  # type: ignore
                                 description_best = description_update
                                 break
 
-            console.print("reason: ", reason)
-            console.print("validation: ", validation)
-            console.print("description: ", description)
+            console.print("\nreason: ", reason)
+            console.print("\nvalidation: ", validation)
+            console.print("\ndescription: ", description)
 
-            console.print("reason_update: ", reason_update)
-            console.print("validation_update: ", validation_update)
-            console.print("description_update: ", description_update)
+            console.print("\nreason_update: ", reason_update)
+            console.print("\nvalidation_update: ", validation_update)
+            console.print("\ndescription_update: ", description_update)
 
-            console.print("reason_best: ", reason_best)
-            console.print("validation_best: ", validation_best)
-            console.print("description_best: ", description_best)
+            console.print("\nreason_best: ", reason_best)
+            console.print("\nvalidation_best: ", validation_best)
+            console.print("\ndescription_best: ", description_best)
 
             if not reason:
                 console.print("no reason", style="red")
