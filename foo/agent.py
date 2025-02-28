@@ -181,7 +181,10 @@ class Foo(TaskAgent):
             approved = False
             action_correction = None
             for review in action.reviews:
-                if review.approved and review.reviewer_type == "human":
+                if review.approved and review.reviewer_type in [
+                    "human",
+                    "user",
+                ]:
                     approved = True
                     action_correction = review.correction
                     break
@@ -226,7 +229,13 @@ class Foo(TaskAgent):
                             console.print(
                                 "\nreason review: ", review.to_v1().model_dump()
                             )
-                            if review.correction and review.reviewer_type == "human":
+                            if review.correction and review.reviewer_type in [
+                                "human",
+                                "user",
+                            ]:
+                                console.print(
+                                    "\nreason correction: ", review.correction
+                                )
                                 reason_update = review.correction["value"]  # type: ignore
                                 reason_best = reason_update
                                 break
@@ -237,7 +246,13 @@ class Foo(TaskAgent):
                             console.print(
                                 "\nvalidation review: ", review.to_v1().model_dump()
                             )
-                            if review.correction and review.reviewer_type == "human":
+                            if review.correction and review.reviewer_type in [
+                                "human",
+                                "user",
+                            ]:
+                                console.print(
+                                    "\nvalidation correction: ", review.correction
+                                )
                                 validation_update = review.correction["value"]  # type: ignore
                                 validation_best = validation_update
                                 break
@@ -248,7 +263,13 @@ class Foo(TaskAgent):
                             console.print(
                                 "\ndescription review: ", review.to_v1().model_dump()
                             )
-                            if review.correction and review.reviewer_type == "human":
+                            if review.correction and review.reviewer_type in [
+                                "human",
+                                "user",
+                            ]:
+                                console.print(
+                                    "\ndescription correction: ", review.correction
+                                )
                                 description_update = review.correction["value"]  # type: ignore
                                 description_best = description_update
                                 break
