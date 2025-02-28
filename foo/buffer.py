@@ -46,6 +46,7 @@ def create_actor_dpo_buffer(
         vram_request="40Gi",
         sample_n=100,
         adapter=name,
+        queue=name,
         sample_strategy="LatestWithRandom",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
@@ -118,6 +119,7 @@ def create_base_actor_dpo_buffer(
         sample_n=100,
         adapter="actor-base",
         sample_strategy="LatestWithRandom",
+        queue="actor-base",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
@@ -188,6 +190,7 @@ def create_val_dpo_buffer(
         vram_request="40Gi",
         sample_n=100,
         adapter=name,
+        queue=name,
         sample_strategy="LatestWithRandom",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
@@ -260,6 +263,7 @@ def create_base_val_dpo_buffer(
         sample_n=100,
         adapter="val-base",
         sample_strategy="LatestWithRandom",
+        queue="val-base",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
@@ -330,6 +334,7 @@ def create_reason_annot_dpo_buffer(
         vram_request="40Gi",
         sample_n=100,
         adapter="reason-annot",
+        queue="reason-annot",
         sample_strategy="LatestWithRandom",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
@@ -401,6 +406,7 @@ def create_validation_annot_dpo_buffer(
         vram_request="40Gi",
         sample_n=100,
         adapter="validation-annot",
+        queue="validation-annot",
         sample_strategy="LatestWithRandom",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
@@ -472,6 +478,7 @@ def create_description_annot_dpo_buffer(
         vram_request="40Gi",
         sample_n=100,
         adapter="description-annot",
+        queue="description-annot",
         sample_strategy="LatestWithRandom",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",

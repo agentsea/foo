@@ -351,7 +351,7 @@ class Foo(TaskAgent):
 
                 if reason_update:
                     console.print(
-                        "adding to reason annot dpo buffer: ", reason_best, reason
+                        f"adding to reason annot dpo buffer \n-- good reason: {reason_best}\n bad reason: {reason}\n ",
                     )
                     reason_swift_prompt["rejected_response"] = reason
                     send_reason_annot_dpo.append(reason_swift_prompt)
@@ -372,9 +372,7 @@ class Foo(TaskAgent):
 
                 if description_update:
                     console.print(
-                        "adding to description annot dpo buffer: ",
-                        description_best,
-                        description,
+                        f"adding to description annot dpo buffer\n-- good description: {description_best}\n bad description: {description}\n ",
                     )
                     description_swift_prompt["rejected_response"] = description
                     send_description_annot_dpo.append(description_swift_prompt)
@@ -396,9 +394,7 @@ class Foo(TaskAgent):
 
                 if validation_update:
                     console.print(
-                        "adding to validation annot dpo buffer: ",
-                        validation_best,
-                        validation,
+                        f"adding to validation annot dpo buffer \n-- good validation: {validation_best}\n bad validation: {validation}\n ",
                     )
                     validation_swift_prompt["rejected_response"] = validation
                     send_validation_annot_dpo.append(validation_swift_prompt)
