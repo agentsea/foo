@@ -43,7 +43,8 @@ def create_actor_dpo_buffer(
 
     actor_dpo_buffer = ReplayBuffer(
         name=f"{name}-dpo",
-        vram_request="40Gi",
+        vram_request="80Gi",
+        train_every=100,
         sample_n=100,
         adapter=name,
         queue=name,
@@ -115,7 +116,8 @@ def create_base_actor_dpo_buffer(
 
     actor_dpo_buffer = ReplayBuffer(
         name="actor-base-dpo",
-        vram_request="40Gi",
+        vram_request="80Gi",
+        train_every=100,
         sample_n=100,
         adapter="actor-base",
         sample_strategy="LatestWithRandom",
@@ -187,7 +189,8 @@ def create_val_dpo_buffer(
 
     val_dpo_buffer = ReplayBuffer(
         name=f"{name}-dpo",
-        vram_request="40Gi",
+        vram_request="80Gi",
+        train_every=100,
         sample_n=100,
         adapter=name,
         queue=name,
@@ -259,7 +262,8 @@ def create_base_val_dpo_buffer(
 
     val_dpo_buffer = ReplayBuffer(
         name="val-base-dpo",
-        vram_request="40Gi",
+        vram_request="80Gi",
+        train_every=100,
         sample_n=100,
         adapter="val-base",
         sample_strategy="LatestWithRandom",
@@ -331,7 +335,8 @@ def create_reason_annot_dpo_buffer(
 
     val_dpo_buffer = ReplayBuffer(
         name="reason-annot-dpo",
-        vram_request="40Gi",
+        vram_request="80Gi",
+        train_every=100,
         sample_n=100,
         adapter="reason-annot",
         queue="reason-annot",
@@ -403,7 +408,8 @@ def create_validation_annot_dpo_buffer(
 
     val_dpo_buffer = ReplayBuffer(
         name="validation-annot-dpo",
-        vram_request="40Gi",
+        vram_request="80Gi",
+        train_every=100,
         sample_n=100,
         adapter="validation-annot",
         queue="validation-annot",
@@ -475,7 +481,8 @@ def create_description_annot_dpo_buffer(
 
     val_dpo_buffer = ReplayBuffer(
         name="description-annot-dpo",
-        vram_request="40Gi",
+        vram_request="80Gi",
+        train_every=100,
         sample_n=100,
         adapter="description-annot",
         queue="description-annot",
