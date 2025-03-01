@@ -186,7 +186,10 @@ class Foo(TaskAgent):
                     "user",
                 ]:
                     approved = True
-                    action_correction = review.correction
+                    if isinstance(review.correction, dict):
+                        action_correction = review.correction["value"]  # type: ignore
+                    else:
+                        action_correction = review.correction
                     break
 
             console.print("approved: ", approved)
@@ -236,8 +239,12 @@ class Foo(TaskAgent):
                                 console.print(
                                     "\nreason correction: ", review.correction
                                 )
-                                reason_update = review.correction["value"]  # type: ignore
-                                reason_best = reason_update
+                                if isinstance(review.correction, dict):
+                                    reason_update = review.correction["value"]  # type: ignore
+                                    reason_best = reason_update
+                                else:
+                                    reason_update = review.correction
+                                    reason_best = reason_update
                                 break
                     elif reviewable.key == "validation":
                         validation = reviewable.value
@@ -253,8 +260,12 @@ class Foo(TaskAgent):
                                 console.print(
                                     "\nvalidation correction: ", review.correction
                                 )
-                                validation_update = review.correction["value"]  # type: ignore
-                                validation_best = validation_update
+                                if isinstance(review.correction, dict):
+                                    validation_update = review.correction["value"]  # type: ignore
+                                    validation_best = validation_update
+                                else:
+                                    validation_update = review.correction
+                                    validation_best = validation_update
                                 break
                     elif reviewable.key == "description":
                         description = reviewable.value
@@ -270,8 +281,12 @@ class Foo(TaskAgent):
                                 console.print(
                                     "\ndescription correction: ", review.correction
                                 )
-                                description_update = review.correction["value"]  # type: ignore
-                                description_best = description_update
+                                if isinstance(review.correction, dict):
+                                    description_update = review.correction["value"]  # type: ignore
+                                    description_best = description_update
+                                else:
+                                    description_update = review.correction
+                                    description_best = description_update
                                 break
 
             console.print("\nreason: ", reason)
