@@ -48,6 +48,7 @@ def create_actor_dpo_buffer(
         train_every=10000,
         sample_n=100,
         adapter=name,
+        queue=name,
         sample_strategy="LatestWithRandom",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
