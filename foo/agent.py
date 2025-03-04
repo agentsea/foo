@@ -536,14 +536,14 @@ class Foo(TaskAgent):
             val_sft_buffer.send(send_val_sft, train=True)
         if send_val_dpo:
             console.print("sending to val dpo buffer...")
-            val_dpo_buffer.send(send_val_dpo, train=True)
+            val_dpo_buffer.send(send_val_dpo)
 
         if send_actor_sft:
             console.print("sending to actor sft buffer...")
             actor_sft_buffer.send(send_actor_sft, train=True)
         if send_actor_dpo:
             console.print("sending to actor dpo buffer...")
-            actor_dpo_buffer.send(send_actor_dpo, train=True)
+            actor_dpo_buffer.send(send_actor_dpo)
 
         if send_base_actor_sft:
             console.print("sending to base actor sft buffer...")
