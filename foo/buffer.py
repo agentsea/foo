@@ -12,6 +12,7 @@ def create_actor_sft_buffer(
         train_every=30,
         sample_n=100,
         sample_strategy="LatestWithRandom",
+        adapter=name,
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
@@ -44,10 +45,9 @@ def create_actor_dpo_buffer(
     actor_dpo_buffer = ReplayBuffer(
         name=f"{name}-dpo",
         vram_request="80Gi",
-        train_every=100,
+        train_every=10000,
         sample_n=100,
         adapter=name,
-        queue=name,
         sample_strategy="LatestWithRandom",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
@@ -85,6 +85,7 @@ def create_base_actor_sft_buffer(
         train_every=100,
         sample_n=100,
         sample_strategy="LatestWithRandom",
+        adapter="actor-base",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
@@ -117,11 +118,11 @@ def create_base_actor_dpo_buffer(
     actor_dpo_buffer = ReplayBuffer(
         name="actor-base-dpo",
         vram_request="80Gi",
-        train_every=100,
+        train_every=10000,
         sample_n=100,
         adapter="actor-base",
-        sample_strategy="LatestWithRandom",
         queue="actor-base",
+        sample_strategy="LatestWithRandom",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
@@ -158,6 +159,7 @@ def create_val_sft_buffer(
         train_every=30,
         sample_n=100,
         sample_strategy="LatestWithRandom",
+        adapter=name,
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
@@ -190,7 +192,7 @@ def create_val_dpo_buffer(
     val_dpo_buffer = ReplayBuffer(
         name=f"{name}-dpo",
         vram_request="80Gi",
-        train_every=100,
+        train_every=10000,
         sample_n=100,
         adapter=name,
         queue=name,
@@ -199,7 +201,7 @@ def create_val_dpo_buffer(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
             train_type="lora",
-            deepspeed="zero3_offload",
+            deepspeed="zero3",
             torch_dtype="bfloat16",
             max_length=16384,
             val_split_ratio=1.0,
@@ -231,6 +233,7 @@ def create_base_val_sft_buffer(
         train_every=100,
         sample_n=100,
         sample_strategy="LatestWithRandom",
+        adapter="val-base",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
@@ -263,7 +266,7 @@ def create_base_val_dpo_buffer(
     val_dpo_buffer = ReplayBuffer(
         name="val-base-dpo",
         vram_request="80Gi",
-        train_every=100,
+        train_every=10000,
         sample_n=100,
         adapter="val-base",
         sample_strategy="LatestWithRandom",
@@ -272,7 +275,7 @@ def create_base_val_dpo_buffer(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
             train_type="lora",
-            deepspeed="zero3_offload",
+            deepspeed="zero3",
             torch_dtype="bfloat16",
             max_length=16384,
             val_split_ratio=1.0,
@@ -304,6 +307,7 @@ def create_reason_annot_sft_buffer(
         train_every=100,
         sample_n=100,
         sample_strategy="LatestWithRandom",
+        adapter="reason-annot",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
@@ -336,7 +340,7 @@ def create_reason_annot_dpo_buffer(
     val_dpo_buffer = ReplayBuffer(
         name="reason-annot-dpo",
         vram_request="80Gi",
-        train_every=100,
+        train_every=10000,
         sample_n=100,
         adapter="reason-annot",
         queue="reason-annot",
@@ -345,7 +349,7 @@ def create_reason_annot_dpo_buffer(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
             train_type="lora",
-            deepspeed="zero3_offload",
+            deepspeed="zero3",
             torch_dtype="bfloat16",
             max_length=16384,
             val_split_ratio=1.0,
@@ -377,6 +381,7 @@ def create_validation_annot_sft_buffer(
         train_every=100,
         sample_n=100,
         sample_strategy="LatestWithRandom",
+        adapter="validation-annot",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
@@ -409,7 +414,7 @@ def create_validation_annot_dpo_buffer(
     val_dpo_buffer = ReplayBuffer(
         name="validation-annot-dpo",
         vram_request="80Gi",
-        train_every=100,
+        train_every=10000,
         sample_n=100,
         adapter="validation-annot",
         queue="validation-annot",
@@ -418,7 +423,7 @@ def create_validation_annot_dpo_buffer(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
             train_type="lora",
-            deepspeed="zero3_offload",
+            deepspeed="zero3",
             torch_dtype="bfloat16",
             max_length=16384,
             val_split_ratio=1.0,
@@ -450,6 +455,7 @@ def create_description_annot_sft_buffer(
         train_every=100,
         sample_n=100,
         sample_strategy="LatestWithRandom",
+        adapter="description-annot",
         ms_swift_params=V1MSSwiftBufferParams(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
@@ -482,7 +488,7 @@ def create_description_annot_dpo_buffer(
     val_dpo_buffer = ReplayBuffer(
         name="description-annot-dpo",
         vram_request="80Gi",
-        train_every=100,
+        train_every=10000,
         sample_n=100,
         adapter="description-annot",
         queue="description-annot",
@@ -491,7 +497,7 @@ def create_description_annot_dpo_buffer(
             model="Qwen/Qwen2.5-VL-7B-Instruct",
             model_type="qwen2_5_vl",
             train_type="lora",
-            deepspeed="zero3_offload",
+            deepspeed="zero3",
             torch_dtype="bfloat16",
             max_length=16384,
             val_split_ratio=1.0,
