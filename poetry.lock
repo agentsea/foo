@@ -3046,13 +3046,13 @@ files = [
 
 [[package]]
 name = "orign"
-version = "0.1.43"
+version = "0.1.44"
 description = "A Python client for Orign"
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "orign-0.1.43-py3-none-any.whl", hash = "sha256:0c000375e4556130d19632a8e8c3067a288f2299192e18eee0f0bfb0893f6953"},
-    {file = "orign-0.1.43.tar.gz", hash = "sha256:b8e054622ca6e6e116912e6228711492a048a30dbbcf9bb1e7941b8e70bd1a9d"},
+    {file = "orign-0.1.44-py3-none-any.whl", hash = "sha256:8ee8504c9ab176534b5cd0c34d112966b07f48cdffc5ace59ec1f36471606ead"},
+    {file = "orign-0.1.44.tar.gz", hash = "sha256:0d585f5acc8a4e2b072fca214bd33e5a0842a6fd04b92f085bacab8077213793"},
 ]
 
 [package.dependencies]
@@ -5655,4 +5655,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "5a69795f11ba5cacd1cad2d196c5cf0a8784b6d32f862ec91214680441823077"
+content-hash = "f8af7136fe073f43a67e91907f0433b6ec600ef506b3d7a5b780a035914904c5"
