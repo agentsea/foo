@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Dict, Optional
 
 from nebu import Message
 from nebu.processors.decorate import processor
@@ -30,6 +30,7 @@ class TrainingRequest(BaseModel):
     lora_dropout: float = 0
     optimizer: str = "adamw_8bit"
     owner: Optional[str] = None
+    labels: Optional[Dict[str, str]] = None
 
 
 class TrainingResponse(BaseModel):
@@ -71,6 +72,8 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
     import time
 
     import requests
+    from unsloth import FastVisionModel, is_bf16_supported  # type: ignore # isort: skip
+    from unsloth.trainer import UnslothVisionDataCollator  # type: ignore # isort: skip
     import torch  # type: ignore
     from chatmux import oai_to_unsloth
     from nebu import (
@@ -82,8 +85,6 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
     )
     from orign import Adapter, Training, V1LoraParams
     from trl import SFTConfig, SFTTrainer  # type: ignore
-    from unsloth import FastVisionModel, is_bf16_supported  # type: ignore
-    from unsloth.trainer import UnslothVisionDataCollator  # type: ignore
 
     print("message", message)
     if not message.content:
@@ -208,8 +209,8 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
 
     trainer = SFTTrainer(
         model=model,
-        tokenizer=tokenizer,
-        data_collator=UnslothVisionDataCollator(model, tokenizer),  # Must use!
+        tokenizer=tokenizer,  # type: ignore
+        data_collator=UnslothVisionDataCollator(model, tokenizer),  # type: ignore
         train_dataset=converted_dataset,
         args=SFTConfig(
             per_device_train_batch_size=training_request.batch_size,
@@ -293,6 +294,7 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
             alpha=training_request.lora_alpha,
             dropout=training_request.lora_dropout,
         ),
+        labels=training_request.labels,
     )
 
     training = Training(
@@ -303,6 +305,7 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
             namespace=adapter_namespace,
             kind="Adapter",
         ),
+        labels=training_request.labels,
     )
     training.log(data=training_metrics)
 
