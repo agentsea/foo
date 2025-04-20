@@ -30,22 +30,12 @@ from tenacity import (
 )
 from toolfuse.util import AgentUtils
 
-from .actor.base import Actor, Step
-from .actor.orign import OrignActor
+from .actor import Actor, Step
 from .buffer import (
-    create_actor_dpo_buffer,
     create_actor_sft_buffer,
-    create_base_actor_dpo_buffer,
-    create_base_actor_sft_buffer,
-    create_base_val_dpo_buffer,
-    create_base_val_sft_buffer,
-    create_description_annot_dpo_buffer,
     create_description_annot_sft_buffer,
-    create_reason_annot_dpo_buffer,
     create_reason_annot_sft_buffer,
-    create_val_dpo_buffer,
     create_val_sft_buffer,
-    create_validation_annot_dpo_buffer,
     create_validation_annot_sft_buffer,
 )
 
@@ -76,6 +66,7 @@ class Foo(TaskAgent):
             skill (Skill): The associated skill
         """
         print("learning task: ", task.id)
+        from .train import TrainingRequest, train_unsloth_sft
 
         if not task.remote or not task.auth_token:
             raise ValueError("Task remote or token not set")
@@ -106,33 +97,16 @@ class Foo(TaskAgent):
         actor_sft_buffer = create_actor_sft_buffer(
             actor_adapter, skill.id, orign_config
         )
-        actor_dpo_buffer = create_actor_dpo_buffer(
-            actor_adapter, skill.id, orign_config
-        )
-
-        base_actor_sft_buffer = create_base_actor_sft_buffer(skill.id, orign_config)
-        base_actor_dpo_buffer = create_base_actor_dpo_buffer(skill.id, orign_config)
 
         val_sft_buffer = create_val_sft_buffer(val_adapter, skill.id, orign_config)
-        val_dpo_buffer = create_val_dpo_buffer(val_adapter, skill.id, orign_config)
-
-        base_val_sft_buffer = create_base_val_sft_buffer(skill.id, orign_config)
-        base_val_dpo_buffer = create_base_val_dpo_buffer(skill.id, orign_config)
 
         reason_annot_sft_buffer = create_reason_annot_sft_buffer(skill.id, orign_config)
-        reason_annot_dpo_buffer = create_reason_annot_dpo_buffer(skill.id, orign_config)
 
         validation_annot_sft_buffer = create_validation_annot_sft_buffer(
             skill.id, orign_config
         )
-        validation_annot_dpo_buffer = create_validation_annot_dpo_buffer(
-            skill.id, orign_config
-        )
 
         description_annot_sft_buffer = create_description_annot_sft_buffer(
-            skill.id, orign_config
-        )
-        description_annot_dpo_buffer = create_description_annot_dpo_buffer(
             skill.id, orign_config
         )
 
@@ -148,22 +122,12 @@ class Foo(TaskAgent):
 
         send_val_sft = []
         send_actor_sft = []
-        send_base_val_sft = []
-        send_base_actor_sft = []
         send_reason_annot_sft = []
         send_validation_annot_sft = []
         send_description_annot_sft = []
 
-        send_val_dpo = []
-        send_actor_dpo = []
-        send_base_val_dpo = []
-        send_base_actor_dpo = []
-        send_reason_annot_dpo = []
-        send_validation_annot_dpo = []
-        send_description_annot_dpo = []
-
         console.print("getting actor...")
-        actor = self.get_actor(api_key=task.auth_token)
+        actor = self.get_actor(adapter=actor_adapter, api_key=task.auth_token)
 
         console.print("getting device...")
         device = Desktop(
@@ -313,7 +277,7 @@ class Foo(TaskAgent):
                 console.print(
                     "adding to reason annot dpo buffer: ", response_reason, reason
                 )
-                swift_reason_dpo_prompt = {
+                swift_reason_dpo_prompt = {  # type: ignore
                     "messages": [
                         {
                             "role": "user",
@@ -328,8 +292,8 @@ class Foo(TaskAgent):
                     "rejected_response": reason,
                 }
 
-                send_actor_dpo.append(swift_reason_dpo_prompt)
-                send_base_actor_dpo.append(swift_reason_dpo_prompt)
+                # send_actor_dpo.append(swift_reason_dpo_prompt)
+                # send_base_actor_dpo.append(swift_reason_dpo_prompt)
 
             action_str = action.action.model_dump_json(
                 exclude_unset=True, exclude_none=True, exclude_defaults=True
@@ -370,7 +334,7 @@ class Foo(TaskAgent):
                     )
                     reason_swift_prompt_copy = reason_swift_prompt.copy()
                     reason_swift_prompt_copy["rejected_response"] = reason
-                    send_reason_annot_dpo.append(reason_swift_prompt_copy)
+                    # send_reason_annot_dpo.append(reason_swift_prompt_copy)
 
             if description_best:
                 description_swift_prompt = create_swift_description_prompt(
@@ -392,7 +356,7 @@ class Foo(TaskAgent):
                     )
                     description_swift_prompt_copy = description_swift_prompt.copy()
                     description_swift_prompt_copy["rejected_response"] = description
-                    send_description_annot_dpo.append(description_swift_prompt_copy)
+                    # send_description_annot_dpo.append(description_swift_prompt_copy)
 
             if validation_best:
                 validation_swift_prompt = create_swift_validation_prompt(
@@ -415,7 +379,7 @@ class Foo(TaskAgent):
                     )
                     validation_swift_prompt_copy = validation_swift_prompt.copy()
                     validation_swift_prompt_copy["rejected_response"] = validation
-                    send_validation_annot_dpo.append(validation_swift_prompt_copy)
+                    # send_validation_annot_dpo.append(validation_swift_prompt_copy)
 
             if approved:
                 response = (
@@ -452,8 +416,8 @@ class Foo(TaskAgent):
 
                 send_actor_sft.append(swift_prompt)
                 send_actor_sft.append(swift_reason_prompt)
-                send_base_actor_sft.append(swift_prompt)
-                send_base_actor_sft.append(swift_reason_prompt)
+                # send_base_actor_sft.append(swift_prompt)
+                # send_base_actor_sft.append(swift_reason_prompt)
 
                 console.print("adding to actor buffer: ", swift_prompt)
                 # console.print("orignal prompt: ", prompt.model_dump())
@@ -535,56 +499,92 @@ class Foo(TaskAgent):
                         val_ctx_reason_swift_prompt.copy()
                     )
                     val_ctx_reason_swift_prompt_copy["rejected_response"] = validation  # type: ignore
-                    send_val_dpo.append(val_ctx_reason_swift_prompt_copy)
+                    # send_val_dpo.append(val_ctx_reason_swift_prompt_copy)
 
         if send_val_sft:
             console.print("sending to val sft buffer...")
-            val_sft_buffer.send(send_val_sft, train=True)
-        if send_val_dpo:
-            console.print("sending to val dpo buffer...")
-            val_dpo_buffer.send(send_val_dpo)
+            val_sft_buffer.send(send_val_sft)
+            dataset = val_sft_buffer.sample(n=50, link=True)
+            if not dataset.dataset_uri:
+                raise ValueError("Dataset URI not found")
+
+            print("training validation buffer...")
+            train_unsloth_sft(
+                data=TrainingRequest(  # type: ignore
+                    adapter_name=self.get_val_adapter_name(skill, task.owner_id, user),
+                    dataset=dataset.dataset_uri,
+                )
+            )
+            print("sent training to validation buffer")
 
         if send_actor_sft:
             console.print("sending to actor sft buffer...")
-            actor_sft_buffer.send(send_actor_sft, train=True)
-        if send_actor_dpo:
-            console.print("sending to actor dpo buffer...")
-            actor_dpo_buffer.send(send_actor_dpo)
+            actor_sft_buffer.send(send_actor_sft)
 
-        if send_base_actor_sft:
-            console.print("sending to base actor sft buffer...")
-            base_actor_sft_buffer.send(send_base_actor_sft)
-        if send_base_actor_dpo:
-            console.print("sending to base actor dpo buffer...")
-            base_actor_dpo_buffer.send(send_base_actor_dpo)
+            dataset = actor_sft_buffer.sample(n=50, link=True)
+            if not dataset.dataset_uri:
+                raise ValueError("Dataset URI not found")
 
-        if send_base_val_sft:
-            console.print("sending to base val sft buffer...")
-            base_val_sft_buffer.send(send_base_val_sft)
-        if send_base_val_dpo:
-            console.print("sending to base val dpo buffer...")
-            base_val_dpo_buffer.send(send_base_val_dpo)
+            print("training actor buffer...")
+            train_unsloth_sft(
+                data=TrainingRequest(  # type: ignore
+                    adapter_name=self.get_actor_adapter_name(
+                        skill, task.owner_id, user
+                    ),
+                    dataset=dataset.dataset_uri,
+                )
+            )
+            print("sent training to actor buffer")
 
         if send_reason_annot_sft:
             console.print("sending to reason annot sft buffer...")
             reason_annot_sft_buffer.send(send_reason_annot_sft)
-        if send_reason_annot_dpo:
-            console.print("sending to reason annot dpo buffer...")
-            reason_annot_dpo_buffer.send(send_reason_annot_dpo)
+
+            dataset = reason_annot_sft_buffer.sample(n=50, link=True)
+            if not dataset.dataset_uri:
+                raise ValueError("Dataset URI not found")
+
+            print("training reason annot buffer...")
+            train_unsloth_sft(
+                data=TrainingRequest(  # type: ignore
+                    adapter_name="reason-annot-sft",
+                    dataset=dataset.dataset_uri,
+                )
+            )
 
         if send_validation_annot_sft:
             console.print("sending to validation annot sft buffer...")
             validation_annot_sft_buffer.send(send_validation_annot_sft)
-        if send_validation_annot_dpo:
-            console.print("sending to validation annot dpo buffer...")
-            validation_annot_dpo_buffer.send(send_validation_annot_dpo)
+
+            dataset = validation_annot_sft_buffer.sample(n=50, link=True)
+            if not dataset.dataset_uri:
+                raise ValueError("Dataset URI not found")
+
+            print("training validation annot buffer...")
+            train_unsloth_sft(
+                data=TrainingRequest(  # type: ignore
+                    adapter_name="validation-annot-sft",
+                    dataset=dataset.dataset_uri,
+                )
+            )
+            print("sent training to validation annot buffer")
 
         if send_description_annot_sft:
             console.print("sending to description annot sft buffer...")
             description_annot_sft_buffer.send(send_description_annot_sft)
-        if send_description_annot_dpo:
-            console.print("sending to description annot dpo buffer...")
-            description_annot_dpo_buffer.send(send_description_annot_dpo)
+
+            dataset = description_annot_sft_buffer.sample(n=50, link=True)
+            if not dataset.dataset_uri:
+                raise ValueError("Dataset URI not found")
+
+            print("training description annot buffer...")
+            train_unsloth_sft(
+                data=TrainingRequest(  # type: ignore
+                    adapter_name="description-annot-sft",
+                    dataset=dataset.dataset_uri,
+                )
+            )
+            print("sent training to description annot buffer")
 
     def solve_task(
         self,
@@ -788,7 +788,6 @@ class Foo(TaskAgent):
             # Record the action for feedback and tuning
             task.record_action(
                 state=step.state,
-                prompt=step.prompt,
                 action=step.action,
                 tool=device.ref(),
                 result=action_response,
@@ -864,9 +863,9 @@ class Foo(TaskAgent):
     def get_actor(
         self,
         api_key: str,
-        adapter: Optional[str] = None,
+        adapter: str,
     ) -> Actor:
-        return OrignActor(adapter=adapter, api_key=api_key)
+        return Actor(adapter_name=adapter, api_key=api_key)
 
     def label_task(
         self, remote: str, token: str, task: Task, key: str, value: str

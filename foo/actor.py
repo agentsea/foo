@@ -1,70 +1,79 @@
+from dataclasses import dataclass
 from typing import List, Optional
 
 from agentdesk import Desktop
-from json_repair import repair_json
-from orign import Adapter, ChatModel, V1ChatEvent
-from orign.config import GlobalConfig
-from orign.models import (
+from chatmux.openai import (
     ChatRequest,
     ChatResponse,
-    ContentItem,
-    ImageUrlContent,
-    MessageItem,
-    Prompt,
-    SamplingParams,
+    ImageContentPart,
+    ImageUrl,
+    RequestMessage,
+    TextContentPart,
+    UserMessage,
+    UserMessageContent,
+    UserMessageContentPart,
 )
+from json_repair import repair_json
+from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
 from skillpacks import EnvState, V1Action
 from taskara import Task
 
-from .base import Actor, ReasonedAction, Step
 from .img import image_to_b64
 
 console = Console(force_terminal=True)
 
 
-class OrignActor(Actor[Desktop]):
+class V1ChatEvent(BaseModel):
+    """A chat event"""
+
+    request: ChatRequest
+    response: ChatResponse
+
+
+@dataclass
+class Step:
+    """A step in an episode"""
+
+    state: EnvState
+    action: V1Action
+    action_opts: Optional[List[V1Action]] = None
+    thread: Optional[List[RequestMessage]] = None
+    task: Optional[Task] = None
+    model_id: Optional[str] = None
+    prompt: Optional[V1ChatEvent] = None
+    reason: Optional[str] = None
+
+
+class ReasonedAction(BaseModel):
+    action: V1Action
+    reason: str
+
+
+class Actor:
     """An actor that uses ms-swift and orign"""
 
-    def __init__(
-        self,
-        api_key: str,
-        adapter: Optional[str] = None,
-        model: Optional[str] = None,
-    ):
-        config = GlobalConfig(api_key=api_key)
+    def __init__(self, adapter_name: str, api_key: str):
+        from .infer import infer_qwen_vl
 
-        self.adapter = None
-
-        if adapter:
-            console.print(f"getting adapter: {adapter}")
-            adapters = Adapter.get(name=adapter, config=config)
-            console.print(f"found adapters: {adapters}")
-            if not adapters:
-                console.print(
-                    f"no adapters found for {adapter}, continuing without it..."
-                )
-                self.adapter = None
-            else:
-                self.adapter = adapter
-
-        self.workflow_model_id = model or "Qwen/Qwen2.5-VL-7B-Instruct"
-        self.workflow_model = ChatModel(
-            model=self.workflow_model_id,
-            provider="vllm",
-            config=config,
-        )
-        self.workflow_model.connect()
+        self.model = infer_qwen_vl
+        self.model.api_key = api_key  # type: ignore
+        self.adapter_name = adapter_name
 
     def act(self, task: Task, device: Desktop, history: List[Step]) -> Step:
+        skill = task.skill
+        if not skill:
+            raise ValueError("No skill found")
+
         # Take a screenshot of the desktop and post a message with it
         screenshots = device.take_screenshots(count=1)
         s0 = screenshots[0]
         width, height = s0.size  # Get the dimensions of the screenshot
         console.print(f"Screenshot dimensions: {width} x {height}")
 
-        screenshot = image_to_b64(s0)
+        screenshot_b64 = image_to_b64(s0)
+        screenshot_uri = f"data:image/png;base64,{screenshot_b64}"  # Format as data URI
 
         # Get the current mouse coordinates
         x, y = device.mouse_coordinates()
@@ -75,24 +84,39 @@ class OrignActor(Actor[Desktop]):
         console.print("context: ", style="white")
         console.print(ctx, style="white")
 
-        content = [ContentItem(type="text", text=ctx)]
-        content.append(
-            ContentItem(type="image_url", image_url=ImageUrlContent(url=screenshot))
-        )
-
+        # Construct messages using new models
         messages = [
-            MessageItem(role="user", content=ctx),
+            UserMessage(
+                role="user",
+                name=None,
+                content=UserMessageContent(
+                    root=[
+                        UserMessageContentPart(
+                            root=TextContentPart(type="text", text=ctx)
+                        ),
+                        UserMessageContentPart(
+                            root=ImageContentPart(
+                                type="image_url",
+                                image_url=ImageUrl(url=screenshot_uri, detail="auto"),
+                            )
+                        ),
+                    ]
+                ),
+            )
         ]
 
-        prompt = Prompt(messages=messages)
-        sampling_params = SamplingParams(n=1)
-
-        # Make the action selection
-        response = self.workflow_model.chat(
-            prompt=prompt,
-            sampling_params=sampling_params,
-            adapter=self.adapter,
+        # Create the full request object using the new ChatRequest model
+        request = ChatRequest(  # type: ignore
+            model=self.adapter_name,
+            messages=messages,
+            n=1,
         )
+
+        print("request", request)
+        response = self.model(request, wait=True)  # type: ignore
+        print("response", response)
+
+        # Update type check to use the new ChatResponse model
         if not isinstance(response, ChatResponse):
             raise ValueError(f"Expected a ChatResponse, got: {type(response)}")
 
@@ -115,7 +139,7 @@ class OrignActor(Actor[Desktop]):
             raise
 
         event = V1ChatEvent(
-            request=ChatRequest(prompt=prompt, sampling_params=sampling_params),
+            request=request,
             response=response,
         )
 
@@ -123,8 +147,8 @@ class OrignActor(Actor[Desktop]):
             state=EnvState(images=screenshots),
             action=selection.action,
             task=task,
-            thread=messages,
-            model_id=self.workflow_model_id,
+            thread=messages,  # type: ignore
+            model_id=self.adapter_name,
             prompt=event,
             reason=selection.reason,
         )
@@ -136,7 +160,12 @@ class OrignActor(Actor[Desktop]):
 
         output = []
         for choice in response.choices:
-            text = choice.text
+            # Access content from the message object within the choice using new structure
+            text = choice.message.content if choice.message else None
+
+            if not text:
+                console.print("Warning: Choice message content is empty.")
+                continue
 
             console.print(f"choice text: {text}")
 
