@@ -71,7 +71,7 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
     import time
 
     import requests
-    import torch
+    import torch  # type: ignore
     from chatmux import oai_to_unsloth
     from nebu import (
         Bucket,
@@ -81,14 +81,14 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
         is_allowed,
     )
     from orign import Adapter, Training, V1LoraParams
-    from trl import SFTConfig, SFTTrainer
-    from unsloth import FastVisionModel, is_bf16_supported
-    from unsloth.trainer import UnslothVisionDataCollator
+    from trl import SFTConfig, SFTTrainer  # type: ignore
+    from unsloth import FastVisionModel, is_bf16_supported  # type: ignore
+    from unsloth.trainer import UnslothVisionDataCollator  # type: ignore
 
     print("message", message)
-    training_request: TrainingRequest = message.content
-    if not training_request:
+    if not message.content:
         raise ValueError("No training request provided")
+    training_request: TrainingRequest = message.content
 
     container_config = ContainerConfig.from_env()
     print("container_config", container_config)
@@ -117,11 +117,15 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
     if not adapter_namespace:  # Simplified check
         raise ValueError("Could not determine adapter namespace for training log")
 
+    print("adapter_namespace", adapter_namespace)
+    print("adapter_name", adapter_name)
+
     adapter = None
     try:
         adapters = Adapter.get(adapter_name, adapter_namespace)
     except Exception:
         adapters = []
+    print("found adapters", adapters)
 
     if adapters:
         adapter = adapters[0]
@@ -300,7 +304,6 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
             kind="Adapter",
         ),
     )
-
     training.log(data=training_metrics)
 
     return TrainingResponse(
