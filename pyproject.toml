@@ -13,8 +13,8 @@ dependencies = [
     "fastapi[all]>=0.109",
     "json-repair>=0.30.2",
     "openai>=1.59.3",
-    "surfkit==0.1.400",
-    "orign==0.2.18",
+    "surfkit==0.1.405",
+    "orign==0.2.19",
 ]
 
 [dependency-groups]
