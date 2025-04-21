@@ -1,24 +1,20 @@
-
-FROM pfeiffermax/python-poetry:1.12.0-poetry1.8.4-python3.11.10-bookworm
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm
 
 COPY . /app
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
+# Install system dependencies needed for the app or kubectl
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    wget \
     build-essential \
-    unzip \
     apt-transport-https \
     ca-certificates \
-    gnupg \
     libssl-dev \
-    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && export PATH="$HOME/.cargo/bin:$PATH"
-    
-ENV PATH="/root/.cargo/bin:${PATH}"
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN poetry install
+# Install Python dependencies using uv
+RUN uv sync --frozen
 
 EXPOSE 9090
 ENV DB_TYPE=sqlite
@@ -29,4 +25,4 @@ RUN curl -LO "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/sta
     && rm kubectl
 
 # Run the application
-CMD ["poetry", "run", "python", "-m", "foo.server"]
+CMD ["python", "-m", "foo.server"]
