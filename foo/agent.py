@@ -277,20 +277,20 @@ class Foo(TaskAgent):
                 console.print(
                     "adding to reason annot dpo buffer: ", response_reason, reason
                 )
-                swift_reason_dpo_prompt = {  # type: ignore
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": reason_content + " <image>",
-                        },
-                        {
-                            "role": "assistant",
-                            "content": response_reason,
-                        },
-                    ],
-                    "images": [before_state],
-                    "rejected_response": reason,
-                }
+                # swift_reason_dpo_prompt = {  # type: ignore
+                #     "messages": [
+                #         {
+                #             "role": "user",
+                #             "content": reason_content + " <image>",
+                #         },
+                #         {
+                #             "role": "assistant",
+                #             "content": response_reason,
+                #         },
+                #     ],
+                #     "images": [before_state],
+                #     "rejected_response": reason,
+                # }
 
                 # send_actor_dpo.append(swift_reason_dpo_prompt)
                 # send_base_actor_dpo.append(swift_reason_dpo_prompt)

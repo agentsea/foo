@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies using uv
-RUN uv sync --frozen
+RUN uv sync --frozen --prerelease=allow
 
 EXPOSE 9090
 ENV DB_TYPE=sqlite

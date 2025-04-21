@@ -206,8 +206,8 @@ def infer_qwen_vl(
     print("setting model for inference")
     FastVisionModel.for_inference(state.base_model)
 
-    conent_dict = content.model_dump()
-    messages_oai = conent_dict["messages"]
+    content_dict = content.model_dump()
+    messages_oai = content_dict["messages"]
     messages = oai_to_qwen(messages_oai)
 
     # Preparation for inference
