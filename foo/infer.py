@@ -12,13 +12,13 @@ from chatmux.openai import (
     ResponseMessage,
 )
 from nebu import (
-    Adapter,
     Bucket,
     ContainerConfig,
     Message,
     is_allowed,
 )
 from nebu.processors.decorate import processor
+from orign import Adapter
 
 setup_script = """
 apt update
@@ -40,15 +40,16 @@ def init():
 
     # TODO: remove this, was transient bug
     global _RUNS
-    _RUNS += 1
+    _RUNS += 1  # type: ignore
     print(f">>>>>>>> init() called! runs={_RUNS}, pid={os.getpid()}")
     import gc
 
-    import torch
-    from nebu import Adapter, Cache
-    from unsloth import FastVisionModel
+    from unsloth import FastVisionModel  # type: ignore # isort: skip
+    import torch  # type: ignore
+    from nebu import Adapter, Cache  # type: ignore
 
     if "state" in globals():  # <-- already loaded by an earlier worker
+        print("state already loaded by an earlier worker")
         return
 
     gc.collect()
@@ -102,8 +103,8 @@ def infer_qwen_vl(
     message: Message[ChatRequest],
 ) -> ChatResponse:
     full_time = time.time()
-    from qwen_vl_utils import process_vision_info
-    from unsloth import FastVisionModel
+    from qwen_vl_utils import process_vision_info  # type: ignore
+    from unsloth import FastVisionModel  # type: ignore
 
     global state
 
@@ -126,16 +127,24 @@ def infer_qwen_vl(
     if load_adapter:
         adapter_hot_start = time.time()
         print("checking cache for adapter", f"'adapters:{content.model}'")
-        val_raw = state.cache.get(f"adapters:{content.model}")
-        if val_raw:
-            print("val_raw", val_raw)
-            val = Adapter.model_validate_json(val_raw)
-            print("found adapter in cache", val)
 
-            if not is_allowed(val.owner, message.user_id, message.orgs):
+        model_parts = content.model.split("/")
+        if len(model_parts) == 2:
+            namespace = model_parts[0]
+            name = model_parts[1]
+        else:
+            namespace = message.handle
+            name = model_parts[0]
+
+        adapters = Adapter.get(namespace=namespace, name=name)
+        if adapters:
+            print("found adapter in cache", adapters)
+            adapter = adapters[0]
+
+            if not is_allowed(adapter.metadata.owner, message.user_id, message.orgs):
                 raise ValueError("You are not allowed to use this adapter")
 
-            if not val.base_model == BASE_MODEL_ID:
+            if not adapter.base_model == BASE_MODEL_ID:
                 raise ValueError(
                     "The base model of the adapter does not match the model you are trying to use"
                 )
@@ -143,7 +152,10 @@ def infer_qwen_vl(
             loaded = False
             for adapter in state.adapters:
                 print("cached adapter: ", adapter)
-                if val.name == content.model and val.created_at == adapter.created_at:
+                if (
+                    adapter.name == content.model
+                    and adapter.created_at == adapter.created_at
+                ):
                     loaded = True
                     print("adapter already loaded", content.model)
                     break
@@ -157,10 +169,10 @@ def infer_qwen_vl(
 
             if not loaded:
                 bucket = Bucket()
-                print("copying adapter", val.uri, f"./adapters/{content.model}")
+                print("copying adapter", adapter.uri, f"./adapters/{content.model}")
 
                 time_start = time.time()
-                bucket.copy(val.uri, f"./adapters/{content.model}")
+                bucket.copy(adapter.uri, f"./adapters/{content.model}")
                 print(f"Copied in {time.time() - time_start} seconds")
 
                 print("loading adapter", content.model)
@@ -169,7 +181,7 @@ def infer_qwen_vl(
                     adapter_name=content.model,
                     low_cpu_mem_usage=False,
                 )
-                state.adapters.append(val)  # type: ignore
+                state.adapters.append(adapter)
                 print("loaded adapter", content.model)
 
         else:
@@ -244,11 +256,10 @@ def infer_qwen_vl(
         choices=[
             CompletionChoice(
                 index=0,
-                finish_reason="stop",  # or another appropriate reason
+                finish_reason="stop",
                 message=ResponseMessage(  # type: ignore
                     role="assistant", content=output_text[0]
                 ),
-                # Stub logprobs; in reality, you'd fill these from your model if you have them
                 logprobs=Logprobs(content=[]),
             )
         ],
@@ -259,3 +270,6 @@ def infer_qwen_vl(
     print(f"Total time: {time.time() - full_time} seconds")
 
     return response
+
+
+infer_qwen_vl

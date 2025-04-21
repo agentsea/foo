@@ -17,7 +17,7 @@ from chatmux.openai import (
 )
 from devicebay import Device
 from json_repair import repair_json
-from orign import Message, processor
+from orign import Message, Processor, processor
 from orign.config import GlobalConfig
 from PIL import Image
 from pydantic import BaseModel
@@ -55,12 +55,63 @@ class ReasonedAction(BaseModel):
     reason: str
 
 
-def act(task: Task, device: Desktop, history: List[Step]) -> Step:
+setup = """
+pip install surfkit chatmux orign rich
+"""
+
+
+@processor(image="python:3.11-slim", platform="runpod", setup_script=setup)
+def agent(message: Message[V1Task]) -> V1Task:
+    from infer import infer_qwen_vl
+    from train import train_unsloth_sft
+
+    print(message)
+
+    v1task = message.content
+    if not v1task:
+        raise ValueError("No task found")
+
+    task = Task.from_v1(v1task)
+    if not task.skill:
+        raise ValueError("No skill found")
+
+    api_key = task.auth_token
+    if api_key is None:
+        print("No Api key/token on Task or in Auth")
+
+    try:
+        config = Device.connect_config_type()(
+            **{**task.device.config, "api_key": api_key}  # type: ignore
+        )
+        device = Device.connect(config=config)
+    except Exception as e:
+        err = f"error connecting to device: {e}"
+        task.error = err
+        task.status = TaskStatus.ERROR
+        task.save()
+        raise Exception(err)
+
+    history = []
+
+    for i in range(task.max_steps):
+        print(f"Step {i+1} of {task.max_steps}")
+
+        step = act(task, device, history, infer_qwen_vl)  # type: ignore
+        history.append(step)
+
+        if task.is_done():
+            task.status = TaskStatus.FINISHED
+            task.save()
+            print("Task done")
+            break
+
+    return v1task
+
+
+def act(task: Task, device: Desktop, history: List[Step], actor: Processor) -> Step:
     skill = task.skill
     if not skill:
         raise ValueError("No skill found")
-
-    actor = f"{skill}-actor"
 
     # Take a screenshot of the desktop and post a message with it
     screenshots = device.take_screenshots(count=1)
@@ -106,13 +157,8 @@ def act(task: Task, device: Desktop, history: List[Step]) -> Step:
         n=1,
     )
 
-    # Make the action selection
-    # Pass the full request object to the chat method
-    # Assuming self.workflow_model.chat now accepts ChatRequest and returns ChatResponse
-    response = self.workflow_model.chat(
-        request=request,
-        adapter=self.adapter,
-    )
+    response = actor(request)
+
     # Update type check to use the new ChatResponse model
     if not isinstance(response, ChatResponse):
         raise ValueError(f"Expected a ChatResponse, got: {type(response)}")
@@ -151,56 +197,6 @@ def act(task: Task, device: Desktop, history: List[Step]) -> Step:
     )
 
     return step
-
-
-setup = """
-pip install surfkit chatmux orign rich
-"""
-
-
-@processor(image="python:3.11-slim", platform="runpod", setup_script=setup)
-def agent(message: Message[V1Task]) -> V1Task:
-    print(message)
-
-    v1task = message.content
-    if not v1task:
-        raise ValueError("No task found")
-
-    task = Task.from_v1(v1task)
-    if not task.skill:
-        raise ValueError("No skill found")
-
-    api_key = task.auth_token
-    if api_key is None:
-        print("No Api key/token on Task or in Auth")
-
-    try:
-        config = Device.connect_config_type()(
-            **{**task.device.config, "api_key": api_key}  # type: ignore
-        )
-        device = Device.connect(config=config)
-    except Exception as e:
-        err = f"error connecting to device: {e}"
-        task.error = err
-        task.status = TaskStatus.ERROR
-        task.save()
-        raise Exception(err)
-
-    history = []
-
-    for i in range(task.max_steps):
-        print(f"Step {i+1} of {task.max_steps}")
-
-        step = act(task, device, history)
-        history.append(step)
-
-        if task.is_done():
-            task.status = TaskStatus.FINISHED
-            task.save()
-            print("Task done")
-            break
-
-    return v1task
 
 
 def parse_response(response: ChatResponse) -> List[ReasonedAction]:

@@ -511,7 +511,7 @@ class Foo(TaskAgent):
             print("training validation buffer...")
             train_unsloth_sft(
                 data=TrainingRequest(  # type: ignore
-                    adapter_name=self.get_val_adapter_name(skill, task.owner_id, user),
+                    adapter=self.get_val_adapter_name(skill, task.owner_id, user),
                     dataset=dataset.dataset_uri,
                 )
             )
@@ -528,9 +528,7 @@ class Foo(TaskAgent):
             print("training actor buffer...")
             train_unsloth_sft(
                 data=TrainingRequest(  # type: ignore
-                    adapter_name=self.get_actor_adapter_name(
-                        skill, task.owner_id, user
-                    ),
+                    adapter=self.get_actor_adapter_name(skill, task.owner_id, user),
                     dataset=dataset.dataset_uri,
                 )
             )
@@ -547,7 +545,7 @@ class Foo(TaskAgent):
             print("training reason annot buffer...")
             train_unsloth_sft(
                 data=TrainingRequest(  # type: ignore
-                    adapter_name="reason-annot-sft",
+                    adapter="reason-annot-sft",
                     dataset=dataset.dataset_uri,
                 )
             )
@@ -563,7 +561,7 @@ class Foo(TaskAgent):
             print("training validation annot buffer...")
             train_unsloth_sft(
                 data=TrainingRequest(  # type: ignore
-                    adapter_name="validation-annot-sft",
+                    adapter="validation-annot-sft",
                     dataset=dataset.dataset_uri,
                 )
             )
@@ -580,7 +578,7 @@ class Foo(TaskAgent):
             print("training description annot buffer...")
             train_unsloth_sft(
                 data=TrainingRequest(  # type: ignore
-                    adapter_name="description-annot-sft",
+                    adapter="description-annot-sft",
                     dataset=dataset.dataset_uri,
                 )
             )
@@ -739,7 +737,7 @@ class Foo(TaskAgent):
 
             console.print("taking action...", style="white")
 
-            step = actor.act(task, device, history)
+            step = actor.act(task, device, history)  # type: ignore
 
             if step.task:
                 task = step.task
