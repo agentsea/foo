@@ -18,7 +18,6 @@ from chatmux.openai import (
 from devicebay import Device
 from json_repair import repair_json
 from orign import Message, Processor, processor
-from orign.config import GlobalConfig
 from PIL import Image
 from pydantic import BaseModel
 from rich.console import Console
@@ -60,10 +59,9 @@ pip install surfkit chatmux orign rich
 """
 
 
-@processor(image="python:3.11-slim", platform="runpod", setup_script=setup)
+@processor(image="python:3.11-slim", platform="runpod", setup_script=setup)  # type: ignore
 def agent(message: Message[V1Task]) -> V1Task:
     from infer import infer_qwen_vl
-    from train import train_unsloth_sft
 
     print(message)
 
@@ -152,7 +150,7 @@ def act(task: Task, device: Desktop, history: List[Step], actor: Processor) -> S
 
     # Create the full request object using the new ChatRequest model
     request = ChatRequest(  # type: ignore
-        model=actor,
+        model=actor.name,  # TODO
         messages=messages,
         n=1,
     )
@@ -191,7 +189,7 @@ def act(task: Task, device: Desktop, history: List[Step], actor: Processor) -> S
         action=selection.action,
         task=task,
         thread=messages,  # type: ignore
-        model_id=actor,
+        model_id=actor.name,
         prompt=event,  # Keep event containing request/response? Linter warning needs check
         reason=selection.reason,
     )

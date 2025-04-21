@@ -76,21 +76,21 @@ def learn_task(
 
     try:
         print(f"labeling task as training: {task.id}", flush=True)
-        _label_task(task.remote, task.auth_token, task, "foo/train/status", "training")
+        _label_task(task.remote, task.auth_token, task, "foo/train/status", "training")  # type: ignore
 
         print("labeled task as training", flush=True)
         agent.learn_task(task, skill, current_user)
 
         print(f"labeling task as finished: {task.id}", flush=True)
-        _label_task(task.remote, task.auth_token, task, "foo/train/status", "finished")
+        _label_task(task.remote, task.auth_token, task, "foo/train/status", "finished")  # type: ignore
         print("labeled task as finished", flush=True)
     except Exception as e:
         logger.error(f"error learning task: {e}")
 
         print(f"labeling task as error: {task.id}", flush=True)
-        _label_task(task.remote, task.auth_token, task, "foo/train/status", "error")
+        _label_task(task.remote, task.auth_token, task, "foo/train/status", "error")  # type: ignore
 
-        _label_task(task.remote, task.auth_token, task, "foo/train/error", str(e))
+        _label_task(task.remote, task.auth_token, task, "foo/train/error", str(e))  # type: ignore
         print("labeled task as error", flush=True)
 
 

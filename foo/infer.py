@@ -270,6 +270,3 @@ def infer_qwen_vl(
     print(f"Total time: {time.time() - full_time} seconds")
 
     return response
-
-
-infer_qwen_vl
