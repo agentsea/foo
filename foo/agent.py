@@ -8,7 +8,7 @@ import requests
 from agentcore.models import V1UserProfile
 from agentdesk import Desktop
 from devicebay import Device
-from orign.config import GlobalConfig
+from orign.config import GlobalConfig, ServerConfig
 from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
@@ -77,7 +77,15 @@ class Foo(TaskAgent):
         if not skill.name:
             raise ValueError("Skill name not set")
 
-        orign_config = GlobalConfig(api_key=task.auth_token)
+        print("current env: ", os.environ)
+
+        server_config = ServerConfig(
+            name="foo",
+            api_key=task.auth_token,
+            server=os.getenv("ORIGN_SERVER"),
+            auth_server=os.getenv("AGENTSEA_AUTH_SERVER"),
+        )
+        orign_config = GlobalConfig(servers=[server_config], current_server="foo")
 
         if not task.owner_id:
             raise ValueError("Task owner_id not set")

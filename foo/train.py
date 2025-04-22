@@ -1,4 +1,6 @@
 import os
+import random
+import string
 from typing import Dict, Optional
 
 from nebu import Message
@@ -297,8 +299,9 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
         labels=training_request.labels,
     )
 
+    random_suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=5))
     training = Training(
-        name=adapter_name,
+        name=f"{adapter_name}-{random_suffix}",
         namespace=adapter_namespace,
         adapter=V1ResourceReference(
             name=adapter_name,

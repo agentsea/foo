@@ -113,7 +113,7 @@ class Actor:
         )
 
         print("request", request)
-        response = self.model(request, wait=True)  # type: ignore
+        response = self.model(request, wait=True, api_key=task.auth_token)  # type: ignore
         print("response", response)
 
         # Update type check to use the new ChatResponse model
@@ -130,9 +130,16 @@ class Actor:
                 "assistant",
                 f"▶️ Taking action '{selection.action.name}' with parameters: {selection.action.parameters}",
             )
+            action = device.find_action(selection.action.name)
+            if not action:
+                raise ValueError(f"Action '{selection.action.name}' not found")
 
             console.print("reason: ", style="white")
             console.print(selection.reason, style="white")
+
+            print("taking action: ", action)
+            device.use(action, **selection.action.parameters)
+            print("action taken")
 
         except Exception as e:
             console.print(f"Response failed to parse: {e}", style="red")
