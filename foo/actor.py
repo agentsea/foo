@@ -55,9 +55,9 @@ class Actor:
     """An actor that uses ms-swift and orign"""
 
     def __init__(self, adapter_name: str, api_key: str):
-        from .infer import infer_qwen_vl
+        from orign.zoo.processors.qwen_server import QwenVLServer
 
-        self.model = infer_qwen_vl
+        self.model = QwenVLServer()
         self.model.api_key = api_key  # type: ignore
         self.adapter_name = adapter_name
 

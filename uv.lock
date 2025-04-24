@@ -647,6 +647,18 @@ wheels = [
 ]
 
 [[package]]
+name = "cowpilot"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "openai" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/de/d1/a409bacf2522f6345a9832a6b4426ec31edb5dc3122ceecb5f0c985646d9/cowpilot-0.1.0.tar.gz", hash = "sha256:9e2594d4f8405a1b5e1e0210b1dd9499e8ad2eca6089dfe238c81c85cf9b625e", size = 20083 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/32/c65e26da3f179863f585798081a6621d0f457de82273a93c467768b72538/cowpilot-0.1.0-py3-none-any.whl", hash = "sha256:1c673c96d8cebd44193a2f0041ba64c4f29e2cda9e3c82be893f31f9cb10029e", size = 4341 },
+]
+
+[[package]]
 name = "cryptography"
 version = "43.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -902,6 +914,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "black" },
+    { name = "cowpilot" },
     { name = "flake8" },
     { name = "ipykernel" },
     { name = "pytest" },
@@ -913,7 +926,7 @@ requires-dist = [
     { name = "fastapi", extras = ["all"], specifier = ">=0.109" },
     { name = "json-repair", specifier = ">=0.30.2" },
     { name = "openai", specifier = ">=1.59.3" },
-    { name = "orign", specifier = "==0.2.21" },
+    { name = "orign", specifier = "==0.2.25" },
     { name = "pydantic", specifier = ">=2.6.3" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "sqlalchemy", specifier = ">=2.0.27" },
@@ -923,6 +936,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "black", specifier = ">=24.2.0" },
+    { name = "cowpilot", specifier = ">=0.1.0" },
     { name = "flake8", specifier = ">=7.0.0" },
     { name = "ipykernel", specifier = ">=6.29.3" },
     { name = "pytest", specifier = ">=8.0.2" },
@@ -1861,7 +1875,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/40/09/560ba71405cdf8359
 
 [[package]]
 name = "nebu"
-version = "0.1.57"
+version = "0.1.59"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -1874,9 +1888,9 @@ dependencies = [
     { name = "redis" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1d/ed/e62e05403535a350c45dee2c980ba5617e5866721108d232253ba062445c/nebu-0.1.57.tar.gz", hash = "sha256:0331c238e24b80012b381d739484d5a2f3498e08d2ab62c68c93d58e7a76ec09", size = 49791 }
+sdist = { url = "https://files.pythonhosted.org/packages/df/96/2c445d04c29dc88b53e603722edd9728578b24c8a0b906d174cb9eb3802f/nebu-0.1.59.tar.gz", hash = "sha256:04ee573e0bc76c89ba5cd5ffd3039bf145d983975352dbb16ac482a59cb969cc", size = 49816 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/d1/ccff7f3eab58a13e805598b2e5e78016707d35d104f32fbaf036662497d1/nebu-0.1.57-py3-none-any.whl", hash = "sha256:8750dfbaa3e7e173a34964c301f71f46f6abda87193568110a4cfc9012578aed", size = 53430 },
+    { url = "https://files.pythonhosted.org/packages/78/40/556760b57d5ccaf9c6b3cd6b4b0f4d15e67c19dcc6fe6783eddf6a6ddefd/nebu-0.1.59-py3-none-any.whl", hash = "sha256:375bd3a3e7db2d84831d909b25e9fa9a9fb90eba9c8ca9cd1c6238ecc97dcc0b", size = 53490 },
 ]
 
 [[package]]
@@ -1965,19 +1979,20 @@ wheels = [
 
 [[package]]
 name = "orign"
-version = "0.2.21"
+version = "0.2.25"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chatmux" },
+    { name = "namesgenerator" },
     { name = "nebu" },
     { name = "pillow" },
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "shortuuid" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/62/15/95da88fdf0d491bcc972da7c81a78f7f0503de9043eb770be91301addf08/orign-0.2.21.tar.gz", hash = "sha256:77daa5b0498ddfbb294be4516ba95d0c98444729575ecbac1fa419f0e23d7dfe", size = 34968 }
+sdist = { url = "https://files.pythonhosted.org/packages/37/28/f337ccf51552ab9543db245b75c2add107c3694f33267d999674562ea038/orign-0.2.25.tar.gz", hash = "sha256:315be84dcf319df17732d7ac74892272e59b9ed50cdf2928e806e399e37fce96", size = 38065 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bd/5f/fcc185a6a83bfee7d1db671be5d0036905260ab9288eb6716e67aee62ef3/orign-0.2.21-py3-none-any.whl", hash = "sha256:68cfada5588a0bb378e06ff85ce02a83489cd17b7877e9cdb8d41590ea6640db", size = 43791 },
+    { url = "https://files.pythonhosted.org/packages/17/31/6c1fa29617493b270b95a2511ece4b6c5efc521fa7c85392a3203ac06677/orign-0.2.25-py3-none-any.whl", hash = "sha256:af2d33e4f25dba4f9cbbc3e9c314991ddd577f6068be99c2bc6490a296e59015", size = 46817 },
 ]
 
 [[package]]

@@ -66,7 +66,7 @@ class Foo(TaskAgent):
             skill (Skill): The associated skill
         """
         print("learning task: ", task.id)
-        from .train import TrainingRequest, train_unsloth_sft
+        from orign.zoo.processors.unlsoth_trainer import TrainingRequest, UnslothSFT
 
         if not task.remote or not task.auth_token:
             raise ValueError("Task remote or token not set")
@@ -509,6 +509,10 @@ class Foo(TaskAgent):
                     val_ctx_reason_swift_prompt_copy["rejected_response"] = validation  # type: ignore
                     # send_val_dpo.append(val_ctx_reason_swift_prompt_copy)
 
+        print("creating unsloth processor...")
+        train_unsloth_sft = UnslothSFT(namespace="agentsea")
+        print("unsloth processor created")
+
         if send_val_sft:
             console.print("sending to val sft buffer...")
             val_sft_buffer.send(send_val_sft)
@@ -521,7 +525,8 @@ class Foo(TaskAgent):
                 data=TrainingRequest(  # type: ignore
                     adapter=self.get_val_adapter_name(skill, task.owner_id, user),
                     dataset=dataset.dataset_uri,
-                )
+                ),
+                api_key=task.auth_token,
             )
             print("sent training to validation buffer")
 
@@ -538,7 +543,8 @@ class Foo(TaskAgent):
                 data=TrainingRequest(  # type: ignore
                     adapter=self.get_actor_adapter_name(skill, task.owner_id, user),
                     dataset=dataset.dataset_uri,
-                )
+                ),
+                api_key=task.auth_token,
             )
             print("sent training to actor buffer")
 
@@ -555,7 +561,8 @@ class Foo(TaskAgent):
                 data=TrainingRequest(  # type: ignore
                     adapter="reason-annot-sft",
                     dataset=dataset.dataset_uri,
-                )
+                ),
+                api_key=task.auth_token,
             )
 
         if send_validation_annot_sft:
@@ -571,7 +578,8 @@ class Foo(TaskAgent):
                 data=TrainingRequest(  # type: ignore
                     adapter="validation-annot-sft",
                     dataset=dataset.dataset_uri,
-                )
+                ),
+                api_key=task.auth_token,
             )
             print("sent training to validation annot buffer")
 
@@ -588,7 +596,8 @@ class Foo(TaskAgent):
                 data=TrainingRequest(  # type: ignore
                     adapter="description-annot-sft",
                     dataset=dataset.dataset_uri,
-                )
+                ),
+                api_key=task.auth_token,
             )
             print("sent training to description annot buffer")
 
