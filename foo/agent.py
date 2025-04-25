@@ -70,7 +70,7 @@ class Foo(TaskAgent):
         from orign.zoo.processors.unlsoth_trainer import TrainingRequest, UnslothSFT
 
         print("creating namespace...")
-        Namespace("agentsea")
+        Namespace("agentsea", owner="agentsea")
         print("namespace created")
 
         if not task.remote or not task.auth_token:
@@ -629,7 +629,7 @@ class Foo(TaskAgent):
         from nebu import Namespace
 
         print("creating namespace...")
-        Namespace("agentsea")
+        Namespace("agentsea", owner="agentsea")
         print("namespace created")
         try:
             if not device:
