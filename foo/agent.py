@@ -66,7 +66,12 @@ class Foo(TaskAgent):
             skill (Skill): The associated skill
         """
         print("learning task: ", task.id)
+        from nebu import Namespace
         from orign.zoo.processors.unlsoth_trainer import TrainingRequest, UnslothSFT
+
+        print("creating namespace...")
+        Namespace("agentsea")
+        print("namespace created")
 
         if not task.remote or not task.auth_token:
             raise ValueError("Task remote or token not set")
@@ -621,7 +626,11 @@ class Foo(TaskAgent):
         Returns:
             Task: The task
         """
+        from nebu import Namespace
 
+        print("creating namespace...")
+        Namespace("agentsea")
+        print("namespace created")
         try:
             if not device:
                 raise ValueError("This agent expects a desktop")
