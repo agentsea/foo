@@ -32,7 +32,7 @@ def learn_task(
         remote=task_model.remote,
         id=task_model.id,
         owner_id=task_model.owner_id,
-        auth_token=current_user.token,
+        auth_token=task_model.auth_token,
     )
     if not found:
         raise Exception(f"Task {task_model.id} not found")
@@ -41,7 +41,7 @@ def learn_task(
 
     task = found[0]
     task.remote = task_model.remote  # type: ignore
-    task.auth_token = current_user.token  # type: ignore
+    task.auth_token = task_model.auth_token  # type: ignore
 
     skill_id = None
     if task.skill:
