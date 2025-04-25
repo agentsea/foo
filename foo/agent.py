@@ -74,6 +74,10 @@ class Foo(TaskAgent):
         print("task remote: ", task.remote)
         print("task auth_token: ", task.auth_token)
 
+        internal_auth_token = os.getenv("AGENTSEA_API_KEY")
+        if not internal_auth_token:
+            raise ValueError("AGENTSEA_API_KEY not set")
+
         if not skill.name:
             raise ValueError("Skill name not set")
 
@@ -81,7 +85,7 @@ class Foo(TaskAgent):
 
         server_config = ServerConfig(
             name="foo",
-            api_key=task.auth_token,
+            api_key=internal_auth_token,
             server=os.getenv("ORIGN_SERVER"),
             auth_server=os.getenv("AGENTSEA_AUTH_SERVER"),
         )
@@ -135,7 +139,7 @@ class Foo(TaskAgent):
         send_description_annot_sft = []
 
         console.print("getting actor...")
-        actor = self.get_actor(adapter=actor_adapter, api_key=task.auth_token)
+        actor = self.get_actor(adapter=actor_adapter, api_key=internal_auth_token)
 
         console.print("getting device...")
         device = Desktop(
@@ -632,6 +636,10 @@ class Foo(TaskAgent):
                 "assistant", "I'll post debug messages here", thread="debug"
             )
 
+            internal_auth_token = os.getenv("AGENTSEA_API_KEY")
+            if not internal_auth_token:
+                raise ValueError("AGENTSEA_API_KEY not set")
+
             # Check that the device we received is one we support
             if not isinstance(device, Desktop):
                 raise ValueError("Only desktop devices supported")
@@ -671,7 +679,7 @@ class Foo(TaskAgent):
 
             console.print("getting actor...")
             actor = self.get_actor(
-                api_key=task.auth_token,
+                api_key=internal_auth_token,
                 adapter=adapter,
             )
             console.print("got actor")
