@@ -222,7 +222,8 @@ class Actor:
             action.action.parameters.pop("start_y", None)
         return action
 
-    def get_ctx(self, task: Task, device: Desktop, history: List[Step]) -> str:
+    @classmethod
+    def get_ctx(cls, task: Task, device: Desktop, history: List[Step]) -> str:
         return (
             "You are a helpful assistant operating a computer. \n"
             f"You are given a task to complete: '{task.description}'\n"
@@ -234,7 +235,8 @@ class Actor:
             "I've provided you with the most recent screenshot of the desktop."
         )
 
-    def get_reason_ctx(self, task: Task, device: Desktop, history: List[Step]) -> str:
+    @classmethod
+    def get_reason_ctx(cls, task: Task, device: Desktop, history: List[Step]) -> str:
         return (
             "You are a helpful assistant operating a computer. \n"
             f"You are given a task to complete: '{task.description}'\n"

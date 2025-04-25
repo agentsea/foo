@@ -143,17 +143,14 @@ class Foo(TaskAgent):
         send_validation_annot_sft = []
         send_description_annot_sft = []
 
-        console.print("getting actor...")
-        actor = self.get_actor(adapter=actor_adapter, api_key=internal_auth_token)
-
         console.print("getting device...")
         device = Desktop(
             agentd_url="http://localhost:8000", check_health=False, requires_proxy=False
         )
 
         console.print("getting ctx...")
-        content = actor.get_ctx(task, device, [])
-        reason_content = actor.get_reason_ctx(task, device, [])
+        content = Actor.get_ctx(task, device, [])
+        reason_content = Actor.get_reason_ctx(task, device, [])
         console.print("got ctx")
 
         for i, action in enumerate(task.episode.actions):
