@@ -37,6 +37,7 @@ def create_reason_annot_sft_buffer(
         name="reason-annot",
         config=orign_config,
         labels={"skill": skill_id},
+        train_every=100,
     )
     return val_sft_buffer
 
@@ -50,6 +51,7 @@ def create_validation_annot_sft_buffer(
         name="validation-annot",
         config=orign_config,
         labels={"skill": skill_id},
+        train_every=100,
     )
     return val_sft_buffer
 
@@ -63,5 +65,6 @@ def create_description_annot_sft_buffer(
         name="description-annot",
         config=orign_config,
         labels={"skill": skill_id},
+        train_every=100,
     )
     return val_sft_buffer

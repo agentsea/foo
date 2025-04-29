@@ -15,11 +15,6 @@ from rich.json import JSON
 from skillpacks.reviewable import AnnotationReviewable, ReviewerType
 from surfkit.agent import TaskAgent
 from surfkit.auth.util import get_user_info
-from surfkit.prompt.annots import (
-    create_swift_description_prompt,
-    create_swift_reason_prompt,
-    create_swift_validation_prompt,
-)
 from surfkit.skill import Skill
 from taskara import Task, TaskStatus
 from taskara.server.models import V1TaskUpdate
@@ -37,6 +32,15 @@ from .buffer import (
     create_reason_annot_sft_buffer,
     create_val_sft_buffer,
     create_validation_annot_sft_buffer,
+)
+from .prompts import (
+    create_actor_prompt,
+    create_description_prompt,
+    create_reason_actor_prompt,
+    create_reason_prompt,
+    create_validation_actor_prompt,
+    create_validation_prompt,
+    create_validation_reasoning_prompt,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -94,7 +98,17 @@ class Foo(TaskAgent):
             server=os.getenv("ORIGN_SERVER"),
             auth_server=os.getenv("AGENTSEA_AUTH_SERVER"),
         )
-        orign_config = GlobalConfig(servers=[server_config], current_server="foo")
+        admin_orign_config = GlobalConfig(servers=[server_config], current_server="foo")
+
+        user_server_config = ServerConfig(
+            name="foo",
+            api_key=task.auth_token,
+            server=os.getenv("ORIGN_SERVER"),
+            auth_server=os.getenv("AGENTSEA_AUTH_SERVER"),
+        )
+        user_orign_config = GlobalConfig(
+            servers=[user_server_config], current_server="foo"
+        )
 
         if not task.owner_id:
             raise ValueError("Task owner_id not set")
@@ -108,23 +122,29 @@ class Foo(TaskAgent):
         print("actor_adapter: ", actor_adapter)
         print("val_adapter: ", val_adapter)
 
+        print("creating unsloth processor...")
+        train_unsloth_sft = UnslothSFT(namespace="agentsea")
+        print("unsloth processor created: ", train_unsloth_sft)
+
         ###
         # Create all the buffers!
         ###
         actor_sft_buffer = create_actor_sft_buffer(
-            actor_adapter, skill.id, orign_config
+            actor_adapter, skill.id, user_orign_config
         )
 
-        val_sft_buffer = create_val_sft_buffer(val_adapter, skill.id, orign_config)
+        val_sft_buffer = create_val_sft_buffer(val_adapter, skill.id, user_orign_config)
 
-        reason_annot_sft_buffer = create_reason_annot_sft_buffer(skill.id, orign_config)
+        reason_annot_sft_buffer = create_reason_annot_sft_buffer(
+            skill.id, admin_orign_config
+        )
 
         validation_annot_sft_buffer = create_validation_annot_sft_buffer(
-            skill.id, orign_config
+            skill.id, admin_orign_config
         )
 
         description_annot_sft_buffer = create_description_annot_sft_buffer(
-            skill.id, orign_config
+            skill.id, admin_orign_config
         )
 
         print("\n----\nchecking task: ", task.id)
@@ -291,7 +311,7 @@ class Foo(TaskAgent):
                 console.print(
                     "adding to reason annot dpo buffer: ", response_reason, reason
                 )
-                # swift_reason_dpo_prompt = {  # type: ignore
+                # oai_reason_dpo_prompt = {  # type: ignore
                 #     "messages": [
                 #         {
                 #             "role": "user",
@@ -306,8 +326,8 @@ class Foo(TaskAgent):
                 #     "rejected_response": reason,
                 # }
 
-                # send_actor_dpo.append(swift_reason_dpo_prompt)
-                # send_base_actor_dpo.append(swift_reason_dpo_prompt)
+                # send_actor_dpo.append(oai_reason_dpo_prompt)
+                # send_base_actor_dpo.append(oai_reason_dpo_prompt)
 
             action_str = action.action.model_dump_json(
                 exclude_unset=True, exclude_none=True, exclude_defaults=True
@@ -328,54 +348,52 @@ class Foo(TaskAgent):
                 raise ValueError("Task description not set")
 
             if reason_best:
-                reason_swift_prompt = create_swift_reason_prompt(
-                    image1=before_state,
-                    image2=end_state,
+                reason_oai_prompt = create_reason_prompt(
+                    image1_url=before_state,
+                    image2_url=end_state,
                     action=action_str,
                     task_description=task.description,
                     answer=reason_best,
                 )
 
                 if approved:
-                    console.print(
-                        "adding to reason annot buffer: ", reason_swift_prompt
-                    )
-                    send_reason_annot_sft.append(reason_swift_prompt)
+                    console.print("adding to reason annot buffer: ", reason_oai_prompt)
+                    send_reason_annot_sft.append(reason_oai_prompt)
 
                 if reason_update:
                     console.print(
                         f"adding to reason annot dpo buffer \n-- good reason: {reason_best}\n bad reason: {reason}\n ",
                     )
-                    reason_swift_prompt_copy = reason_swift_prompt.copy()
-                    reason_swift_prompt_copy["rejected_response"] = reason
-                    # send_reason_annot_dpo.append(reason_swift_prompt_copy)
+                    reason_oai_prompt_copy = reason_oai_prompt.copy()
+                    reason_oai_prompt_copy["rejected_response"] = reason
+                    # send_reason_annot_dpo.append(reason_oai_prompt_copy)
 
             if description_best:
-                description_swift_prompt = create_swift_description_prompt(
-                    image1=before_state,
-                    image2=end_state,
+                description_oai_prompt = create_description_prompt(
+                    image1_url=before_state,
+                    image2_url=end_state,
                     action=action_str,
                     answer=description_best,
                 )
 
                 if approved:
                     console.print(
-                        "adding to description annot buffer: ", description_swift_prompt
+                        "adding to description annot buffer: ", description_oai_prompt
                     )
-                    send_description_annot_sft.append(description_swift_prompt)
+                    send_description_annot_sft.append(description_oai_prompt)
 
                 if description_update:
                     console.print(
                         f"adding to description annot dpo buffer\n-- good description: {description_best}\n bad description: {description}\n ",
                     )
-                    description_swift_prompt_copy = description_swift_prompt.copy()
-                    description_swift_prompt_copy["rejected_response"] = description
-                    # send_description_annot_dpo.append(description_swift_prompt_copy)
+                    description_oai_prompt_copy = description_oai_prompt.copy()
+                    description_oai_prompt_copy["rejected_response"] = description
+                    # send_description_annot_dpo.append(description_oai_prompt_copy)
 
             if validation_best:
-                validation_swift_prompt = create_swift_validation_prompt(
-                    image1=before_state,
-                    image2=end_state,
+                validation_oai_prompt = create_validation_prompt(
+                    image1_url=before_state,
+                    image2_url=end_state,
                     action=action_str,
                     task_description=task.description,
                     answer=validation_best,
@@ -383,57 +401,39 @@ class Foo(TaskAgent):
 
                 if approved:
                     console.print(
-                        "adding to validation annot buffer: ", validation_swift_prompt
+                        "adding to validation annot buffer: ", validation_oai_prompt
                     )
-                    send_validation_annot_sft.append(validation_swift_prompt)
+                    send_validation_annot_sft.append(validation_oai_prompt)
 
                 if validation_update:
                     console.print(
                         f"adding to validation annot dpo buffer \n-- good validation: {validation_best}\n bad validation: {validation}\n ",
                     )
-                    validation_swift_prompt_copy = validation_swift_prompt.copy()
-                    validation_swift_prompt_copy["rejected_response"] = validation
-                    # send_validation_annot_dpo.append(validation_swift_prompt_copy)
+                    validation_oai_prompt_copy = validation_oai_prompt.copy()
+                    validation_oai_prompt_copy["rejected_response"] = validation
+                    # send_validation_annot_dpo.append(validation_oai_prompt_copy)
 
             if approved:
                 response = (
                     f"<think>{response_reason}</think><answer>{action_str}</answer>"
                 )
 
-                swift_prompt = {
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": content + " <image>",
-                        },
-                        {
-                            "role": "assistant",
-                            "content": response,
-                        },
-                    ],
-                    "images": [before_state],
-                }
+                oai_prompt = create_actor_prompt(
+                    content=content, image_url=before_state, response=response
+                )
 
-                swift_reason_prompt = {
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": reason_content + " <image>",
-                        },
-                        {
-                            "role": "assistant",
-                            "content": response_reason,
-                        },
-                    ],
-                    "images": [before_state],
-                }
+                oai_reason_prompt = create_reason_actor_prompt(
+                    content=reason_content,
+                    image_url=before_state,
+                    response=response_reason,
+                )
 
-                send_actor_sft.append(swift_prompt)
-                send_actor_sft.append(swift_reason_prompt)
-                # send_base_actor_sft.append(swift_prompt)
-                # send_base_actor_sft.append(swift_reason_prompt)
+                send_actor_sft.append(oai_prompt)
+                send_actor_sft.append(oai_reason_prompt)
+                # send_base_actor_sft.append(oai_prompt)
+                # send_base_actor_sft.append(oai_reason_prompt)
 
-                console.print("adding to actor buffer: ", swift_prompt)
+                console.print("adding to actor buffer: ", oai_prompt)
                 # console.print("orignal prompt: ", prompt.model_dump())
 
                 # {"messages": [{"role": "system", "content": "You are a useful and harmless math calculator"}, {"role": "user", "content": "What is 1 + 1?"}, {"role": "assistant", "content": "It equals 2"}, {"role": "user", "content": "What about adding 1?"}, {"role": "assistant", "content": "It equals 3"}], "rejected_response": "I don't know"}
@@ -449,7 +449,7 @@ class Foo(TaskAgent):
                     "and the second image is the state of the computer after the action was taken.\n"
                     "Using those images, you will decide if the action taken is correct.\n"
                     "Please return your decision in the format <think>...</think><answer>...</answer>\n"
-                    "As an answer, please return 'yes' if the action was correct or 'no' if it was incorrect <image> <image>"
+                    "As an answer, please return 'yes' if the action was correct or 'no' if it was incorrect"
                 )
 
                 val_ctx_reason = (
@@ -484,24 +484,22 @@ class Foo(TaskAgent):
 
                 end_state = next_action.state.images[0]
 
-                val_swift_prompt = {
-                    "messages": [
-                        {"role": "user", "content": val_ctx},
-                        {"role": "assistant", "content": response},
-                    ],
-                    "images": [before_state, end_state],
-                }
-                console.print("adding to val buffer: ", val_swift_prompt)
-                send_val_sft.append(val_swift_prompt)
+                val_oai_prompt = create_validation_actor_prompt(
+                    val_ctx=val_ctx,
+                    image1_url=before_state,
+                    image2_url=end_state,
+                    response=response,
+                )
+                console.print("adding to val buffer: ", val_oai_prompt)
+                send_val_sft.append(val_oai_prompt)
 
-                val_ctx_reason_swift_prompt = {
-                    "messages": [
-                        {"role": "user", "content": val_ctx_reason},
-                        {"role": "assistant", "content": response_val},
-                    ],
-                    "images": [before_state, end_state],
-                }
-                send_val_sft.append(val_ctx_reason_swift_prompt)
+                val_ctx_reason_oai_prompt = create_validation_reasoning_prompt(
+                    val_ctx_reason=val_ctx_reason,
+                    image1_url=before_state,
+                    image2_url=end_state,
+                    response=response_val,
+                )
+                send_val_sft.append(val_ctx_reason_oai_prompt)
 
                 if validation_update:
                     console.print(
@@ -509,15 +507,9 @@ class Foo(TaskAgent):
                         validation_best,
                         validation,
                     )
-                    val_ctx_reason_swift_prompt_copy = (
-                        val_ctx_reason_swift_prompt.copy()
-                    )
-                    val_ctx_reason_swift_prompt_copy["rejected_response"] = validation  # type: ignore
-                    # send_val_dpo.append(val_ctx_reason_swift_prompt_copy)
-
-        print("creating unsloth processor...")
-        train_unsloth_sft = UnslothSFT(namespace="agentsea")
-        print("unsloth processor created")
+                    val_ctx_reason_oai_prompt_copy = val_ctx_reason_oai_prompt.copy()
+                    val_ctx_reason_oai_prompt_copy["rejected_response"] = validation  # type: ignore
+                    # send_val_dpo.append(val_ctx_reason_oai_prompt_copy)
 
         if send_val_sft:
             console.print("sending to val sft buffer...")
@@ -558,54 +550,13 @@ class Foo(TaskAgent):
             console.print("sending to reason annot sft buffer...")
             reason_annot_sft_buffer.send(send_reason_annot_sft)
 
-            dataset = reason_annot_sft_buffer.sample(n=50, link=True)
-            if not dataset.dataset_uri:
-                raise ValueError("Dataset URI not found")
-
-            print("training reason annot buffer...")
-            train_unsloth_sft(
-                data=TrainingRequest(  # type: ignore
-                    adapter="reason-annot-sft",
-                    dataset=dataset.dataset_uri,
-                ),
-                api_key=task.auth_token,
-            )
-
         if send_validation_annot_sft:
             console.print("sending to validation annot sft buffer...")
             validation_annot_sft_buffer.send(send_validation_annot_sft)
 
-            dataset = validation_annot_sft_buffer.sample(n=50, link=True)
-            if not dataset.dataset_uri:
-                raise ValueError("Dataset URI not found")
-
-            print("training validation annot buffer...")
-            train_unsloth_sft(
-                data=TrainingRequest(  # type: ignore
-                    adapter="validation-annot-sft",
-                    dataset=dataset.dataset_uri,
-                ),
-                api_key=task.auth_token,
-            )
-            print("sent training to validation annot buffer")
-
         if send_description_annot_sft:
             console.print("sending to description annot sft buffer...")
             description_annot_sft_buffer.send(send_description_annot_sft)
-
-            dataset = description_annot_sft_buffer.sample(n=50, link=True)
-            if not dataset.dataset_uri:
-                raise ValueError("Dataset URI not found")
-
-            print("training description annot buffer...")
-            train_unsloth_sft(
-                data=TrainingRequest(  # type: ignore
-                    adapter="description-annot-sft",
-                    dataset=dataset.dataset_uri,
-                ),
-                api_key=task.auth_token,
-            )
-            print("sent training to description annot buffer")
 
     def solve_task(
         self,
