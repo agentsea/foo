@@ -39,6 +39,7 @@ def create_reason_annot_sft_buffer(
         labels={"skill": skill_id},
         train_every=100,
         owner="agentsea",
+        namespace="agentsea",
     )
     return val_sft_buffer
 
@@ -54,6 +55,7 @@ def create_validation_annot_sft_buffer(
         labels={"skill": skill_id},
         train_every=100,
         owner="agentsea",
+        namespace="agentsea",
     )
     return val_sft_buffer
 
@@ -69,5 +71,6 @@ def create_description_annot_sft_buffer(
         labels={"skill": skill_id},
         train_every=100,
         owner="agentsea",
+        namespace="agentsea",
     )
     return val_sft_buffer

@@ -70,6 +70,7 @@ class Foo(TaskAgent):
             skill (Skill): The associated skill
         """
         print("learning task: ", task.id)
+        print("with user: ", user.model_dump())
         from nebu import Namespace
         from orign.zoo.processors.unlsoth_trainer import TrainingRequest, UnslothSFT
 
