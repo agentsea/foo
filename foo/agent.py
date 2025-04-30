@@ -69,12 +69,12 @@ class Foo(TaskAgent):
             task (Task): The task
             skill (Skill): The associated skill
         """
-        print("learning task: ", task.id)
+        print("\nlearning task: ", task.id)
         print("with user: ", user.model_dump())
         from nebu import Namespace
         from orign.zoo.processors.unlsoth_trainer import TrainingRequest, UnslothSFT
 
-        print("creating namespace...")
+        print("\ncreating namespace...")
         Namespace("agentsea", owner="agentsea")
         print("namespace created")
 
@@ -111,6 +111,9 @@ class Foo(TaskAgent):
             servers=[user_server_config], current_server="foo"
         )
 
+        print("\nuser_orign_config: ", user_orign_config)
+        print("user_server_config: ", user_server_config)
+
         if not task.owner_id:
             raise ValueError("Task owner_id not set")
 
@@ -120,7 +123,7 @@ class Foo(TaskAgent):
         actor_adapter = self.get_actor_adapter_name(skill, task.owner_id, user)
         val_adapter = self.get_val_adapter_name(skill, task.owner_id, user)
 
-        print("actor_adapter: ", actor_adapter)
+        print("\nactor_adapter: ", actor_adapter)
         print("val_adapter: ", val_adapter)
 
         print("creating unsloth processor...")
@@ -520,6 +523,7 @@ class Foo(TaskAgent):
                 raise ValueError("Dataset URI not found")
 
             print("training validation buffer...")
+            print("training with auth token: ", task.auth_token)
             train_unsloth_sft(
                 data=TrainingRequest(  # type: ignore
                     adapter=self.get_val_adapter_name(skill, task.owner_id, user),
@@ -538,6 +542,7 @@ class Foo(TaskAgent):
                 raise ValueError("Dataset URI not found")
 
             print("training actor buffer...")
+            print("training with auth token: ", task.auth_token)
             train_unsloth_sft(
                 data=TrainingRequest(  # type: ignore
                     adapter=self.get_actor_adapter_name(skill, task.owner_id, user),
@@ -549,15 +554,15 @@ class Foo(TaskAgent):
 
         if send_reason_annot_sft:
             console.print("sending to reason annot sft buffer...")
-            reason_annot_sft_buffer.send(send_reason_annot_sft)
+            # reason_annot_sft_buffer.send(send_reason_annot_sft)
 
         if send_validation_annot_sft:
             console.print("sending to validation annot sft buffer...")
-            validation_annot_sft_buffer.send(send_validation_annot_sft)
+            # validation_annot_sft_buffer.send(send_validation_annot_sft)
 
         if send_description_annot_sft:
             console.print("sending to description annot sft buffer...")
-            description_annot_sft_buffer.send(send_description_annot_sft)
+            # description_annot_sft_buffer.send(send_description_annot_sft)
 
     def solve_task(
         self,
