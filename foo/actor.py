@@ -118,10 +118,13 @@ class Actor:
         print("response", response)
 
         if not isinstance(response, ChatResponse):
-            response = V1StreamResponseMessage.model_validate(response)
-            if not response.content:
+            # TODO: fix in processor
+            if not response:
+                raise ValueError("No response found")
+            content = response.get("content", None)
+            if not content:
                 raise ValueError("No content found in response")
-            response = ChatResponse.model_validate(response.content)
+            response = ChatResponse.model_validate(content)
 
         try:
             actions = self._parse_response(response)
