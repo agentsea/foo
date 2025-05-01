@@ -109,6 +109,7 @@ class Actor:
             model=self.adapter_name,
             messages=messages,
             n=1,
+            max_tokens=2048,
         )
 
         print("request", request)

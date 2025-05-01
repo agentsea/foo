@@ -15,7 +15,7 @@ dependencies = [
     "openai>=1.59.3",
     "surfkit==0.1.408",
     "uvicorn>=0.34.2",
-    "orign==0.2.75",
+    "orign==0.2.76",
 ]
 
 [dependency-groups]
