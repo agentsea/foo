@@ -642,7 +642,7 @@ class Foo(TaskAgent):
 
             console.print("getting actor...")
             actor = self.get_actor(
-                api_key=internal_auth_token,
+                api_key=task.auth_token,
                 adapter=adapter,
             )
             console.print("got actor")
