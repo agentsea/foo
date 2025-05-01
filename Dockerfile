@@ -25,4 +25,4 @@ RUN curl -LO "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/sta
     && rm kubectl
 
 # Run the application
-CMD ["python", "-m", "foo.server"]
+CMD ["uv", "run", "python", "-m", "foo.server"]
