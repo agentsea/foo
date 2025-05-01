@@ -59,6 +59,7 @@ def learn_task(
     skills = Skill.find(id=skill_id, remote=task.remote, token=task_model.auth_token)
     if not skills:
         raise ValueError(f"Skill not found: {skill_id}")
+
     skill = skills[0]
     logger.info(f"skill: {skill.to_v1().model_dump()}")
     v1_agent = learn_model.agent

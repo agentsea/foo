@@ -796,6 +796,7 @@ class Foo(TaskAgent):
         if "@" in owner_id:  # TODO: yuck, user owner_id in the adapter to specify
             namespace = user.handle  # type: ignore
         else:
+            print("actor name using org_id: ", owner_id)
             if not user.organizations:
                 raise ValueError("User has no organizations")
 
@@ -803,6 +804,7 @@ class Foo(TaskAgent):
                 raise ValueError(
                     f"User {user.handle} does not have access to organization {owner_id}"
                 )
+            print("org_info: ", user.organizations[owner_id])
             org_info = user.organizations[owner_id]
             namespace = org_info["org_name"]
 
@@ -812,6 +814,7 @@ class Foo(TaskAgent):
         self, skill: Skill, owner_id: str, user: V1UserProfile
     ) -> str:
         if "@" in owner_id:
+            print("val name using user handle: ", user.handle)
             namespace = user.handle  # type: ignore
         else:
             if not user.organizations:
@@ -821,6 +824,7 @@ class Foo(TaskAgent):
                 raise ValueError(
                     f"User {user.handle} does not have access to organization {owner_id}"
                 )
+            print("val name using org_info: ", user.organizations[owner_id])
             org_info = user.organizations[owner_id]
             namespace = org_info["org_name"]
 
