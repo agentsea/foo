@@ -14,6 +14,7 @@ from chatmux.openai import (
     UserMessageContentPart,
 )
 from json_repair import repair_json
+from nebu import V1StreamResponseMessage
 from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
@@ -116,9 +117,11 @@ class Actor:
         response = self.model(request, wait=True, api_key=task.auth_token)  # type: ignore
         print("response", response)
 
-        # Update type check to use the new ChatResponse model
         if not isinstance(response, ChatResponse):
-            raise ValueError(f"Expected a ChatResponse, got: {type(response)}")
+            response = V1StreamResponseMessage.model_validate(response)
+            if not response.content:
+                raise ValueError("No content found in response")
+            response = ChatResponse.model_validate(response.content)
 
         try:
             actions = self._parse_response(response)
