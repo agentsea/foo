@@ -73,7 +73,6 @@ class Actor:
         console.print(f"Screenshot dimensions: {width} x {height}")
 
         screenshot_b64 = image_to_b64(s0)
-        screenshot_uri = f"data:image/png;base64,{screenshot_b64}"  # Format as data URI
 
         # Get the current mouse coordinates
         x, y = device.mouse_coordinates()
@@ -97,7 +96,7 @@ class Actor:
                         UserMessageContentPart(
                             root=ImageContentPart(
                                 type="image_url",
-                                image_url=ImageUrl(url=screenshot_uri, detail="auto"),
+                                image_url=ImageUrl(url=screenshot_b64, detail="auto"),
                             )
                         ),
                     ]
