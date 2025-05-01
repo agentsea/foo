@@ -127,7 +127,7 @@ class Foo(TaskAgent):
         print("val_adapter: ", val_adapter)
 
         print("creating unsloth processor...")
-        train_unsloth_sft = UnslothSFT(namespace="agentsea")
+        train_unsloth_sft = UnslothSFT(namespace="agentsea", hot_reload=False)
         print("unsloth processor created: ", train_unsloth_sft)
 
         ###

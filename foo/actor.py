@@ -57,7 +57,7 @@ class Actor:
     def __init__(self, adapter_name: str, api_key: str):
         from orign.zoo.processors.qwen_server import QwenVLServer
 
-        self.model = QwenVLServer(namespace="agentsea")
+        self.model = QwenVLServer(namespace="agentsea", hot_reload=False)
         self.model.api_key = api_key  # type: ignore
         self.adapter_name = adapter_name
 
