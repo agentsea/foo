@@ -909,6 +909,7 @@ dependencies = [
     { name = "requests" },
     { name = "sqlalchemy" },
     { name = "surfkit" },
+    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -931,6 +932,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.31.0" },
     { name = "sqlalchemy", specifier = ">=2.0.27" },
     { name = "surfkit", specifier = "==0.1.408" },
+    { name = "uvicorn", specifier = ">=0.34.2" },
 ]
 
 [package.metadata.requires-dev]
