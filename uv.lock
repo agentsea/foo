@@ -931,7 +931,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.6.3" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "sqlalchemy", specifier = ">=2.0.27" },
-    { name = "surfkit", specifier = "==0.1.409" },
+    { name = "surfkit", specifier = "==0.1.410" },
     { name = "uvicorn", specifier = ">=0.34.2" },
 ]
 
@@ -3101,7 +3101,7 @@ wheels = [
 
 [[package]]
 name = "surfkit"
-version = "0.1.409"
+version = "0.1.410"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "agentcore" },
@@ -3118,9 +3118,9 @@ dependencies = [
     { name = "toolfuse" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f4/7b/e583febc03e76646e9e6986f263472ef0349b527444cacbcef9c18e0edc3/surfkit-0.1.409.tar.gz", hash = "sha256:e4e19abcde6e1e18ca4b54aa794264258ba81a595abaa858d04f93e078e33a0d", size = 80628 }
+sdist = { url = "https://files.pythonhosted.org/packages/ff/65/bbac371a25b1d1d12bedb70d103091de6be74177a7b7687b88121ea38b38/surfkit-0.1.410.tar.gz", hash = "sha256:dd00f192d1fdfc04fa9ba0349ba6555737e54e2131e122ce96444bfaf241a7b4", size = 80624 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2c/f9/4a727c3e03f291c62747cb83c53c1444d5d2e14c62e32e3527730a8af05e/surfkit-0.1.409-py3-none-any.whl", hash = "sha256:404e8a5d0d6b762ec40afb60fc05f6ca74354192a86dae97c11b0415c7613e7a", size = 96463 },
+    { url = "https://files.pythonhosted.org/packages/c8/46/c388cf4542167c1d6b92ca473b767efd165958971f2670a629f7b6992af8/surfkit-0.1.410-py3-none-any.whl", hash = "sha256:f0741c7d8d2e43338ba1e1aeefa66083d1726be1b5a6b7f88fb0775c011cd822", size = 96462 },
 ]
 
 [[package]]
