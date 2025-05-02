@@ -74,10 +74,6 @@ class Foo(TaskAgent):
         from nebu import Namespace
         from orign.zoo.processors.unlsoth_trainer import TrainingRequest, UnslothSFT
 
-        print("\ncreating namespace...")
-        Namespace("agentsea", owner="agentsea")
-        print("namespace created")
-
         if not task.remote or not task.auth_token:
             raise ValueError("Task remote or token not set")
 
@@ -90,6 +86,10 @@ class Foo(TaskAgent):
 
         if not skill.name:
             raise ValueError("Skill name not set")
+
+        print("\ncreating namespace...")
+        Namespace("agentsea", owner="agentsea", api_key=internal_auth_token)
+        print("namespace created")
 
         print("current env: ", os.environ)
 
