@@ -548,7 +548,8 @@ class Foo(TaskAgent):
                     adapter=self.get_actor_adapter_name(skill, task.owner_id, user),
                     dataset=dataset.dataset_uri,
                 ),
-                api_key=task.auth_token,
+                api_key=internal_auth_token,
+                user_key=task.auth_token,
             )
             print("sent training to actor buffer")
 

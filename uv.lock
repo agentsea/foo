@@ -927,7 +927,7 @@ requires-dist = [
     { name = "fastapi", extras = ["all"], specifier = ">=0.109" },
     { name = "json-repair", specifier = ">=0.30.2" },
     { name = "openai", specifier = ">=1.59.3" },
-    { name = "orign", specifier = "==0.2.76" },
+    { name = "orign", specifier = "==0.2.78" },
     { name = "pydantic", specifier = ">=2.6.3" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "sqlalchemy", specifier = ">=2.0.27" },
@@ -1667,6 +1667,19 @@ wheels = [
 ]
 
 [[package]]
+name = "loguru"
+version = "0.7.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "win32-setctime", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3a/05/a1dae3dffd1116099471c643b8924f5aa6524411dc6c63fdae648c4f1aca/loguru-0.7.3.tar.gz", hash = "sha256:19480589e77d47b8d85b2c827ad95d49bf31b0dcde16593892eb51dd18706eb6", size = 63559 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/29/0348de65b8cc732daa3e33e67806420b2ae89bdce2b04af740289c5c6c8c/loguru-0.7.3-py3-none-any.whl", hash = "sha256:31a33c10c8e1e10422bfd431aeb5d351c7cf7fa671e3c4df004162264b28220c", size = 61595 },
+]
+
+[[package]]
 name = "markdown-it-py"
 version = "3.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1877,11 +1890,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/40/09/560ba71405cdf8359
 
 [[package]]
 name = "nebu"
-version = "0.1.91"
+version = "0.1.95"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
     { name = "dill" },
+    { name = "loguru" },
     { name = "openai" },
     { name = "pillow" },
     { name = "pydantic" },
@@ -1890,9 +1904,9 @@ dependencies = [
     { name = "redis" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4c/ac/e2de9621d2b3c173bf812f803f3e8ea05e91222d4d2094ad462132056377/nebu-0.1.91.tar.gz", hash = "sha256:7f1926b9a4ae33947dfcb8451f7e0a432dd83a990dd3cc53c42177c7439f08bd", size = 62352 }
+sdist = { url = "https://files.pythonhosted.org/packages/36/f1/3925da19b7400baf03335abaff6de9c1bd263f8e05cfd195f0b20c1d0ca1/nebu-0.1.95.tar.gz", hash = "sha256:114dd40d39adad58351a122f8cdec033b87f8ee7b98b8e96e3b21fa03747dcae", size = 62002 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/17/1b/649fcc1c4a3d3c22314aa5413ec8d56657fc77e3249441f4829db93a72c7/nebu-0.1.91-py3-none-any.whl", hash = "sha256:07ed8bac361bdf79f57067819b4943fac454edc40ea1c849e2c5a865811fbc98", size = 68009 },
+    { url = "https://files.pythonhosted.org/packages/d3/4f/74a6e4c72e38900dacb3ed8f5c7667f8cfcbe9f9cb100924a0a99b54bb76/nebu-0.1.95-py3-none-any.whl", hash = "sha256:fb0de69252bef5ec06451ce9eb48a192f96097a4d070d8657caec52f8afd2849", size = 66849 },
 ]
 
 [[package]]
@@ -1981,10 +1995,11 @@ wheels = [
 
 [[package]]
 name = "orign"
-version = "0.2.76"
+version = "0.2.78"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chatmux" },
+    { name = "loguru" },
     { name = "namesgenerator" },
     { name = "nebu" },
     { name = "pillow" },
@@ -1992,9 +2007,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "shortuuid" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d5/82/16d9ceb38ac33bd8630812df3f74f21f4c689aeb34d0564df0be49c5ee81/orign-0.2.76.tar.gz", hash = "sha256:81436ba2a87dbd367f15875f5e75c104ae1807d441278a3da05eadbfec7426f2", size = 42895 }
+sdist = { url = "https://files.pythonhosted.org/packages/bc/cd/88507526ffecfcdd3618058705e6f4cd01eec3a21b4ba8c39f54e3a2c0ec/orign-0.2.78.tar.gz", hash = "sha256:7447deae239d37f9276ed7ecb679fc13b40fde2abda23dc2da872689e85e60b4", size = 43375 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/91/97/c4bce8060e0507b9690e73d72f6689fc7c7ed3d3881be494dc0ffb464c35/orign-0.2.76-py3-none-any.whl", hash = "sha256:1a747e2aef49558e3408ba4530ea2a1976f45af35951415d0a93d5b2e7d0fc8f", size = 51953 },
+    { url = "https://files.pythonhosted.org/packages/5d/a7/e3b3a719eaf5b838057be4f516b5d4ca565d435b3f3d3331fd0199f1113c/orign-0.2.78-py3-none-any.whl", hash = "sha256:1044e9fe0220d93ddd621e3fbff4a4dd2d96c91dd991cd10b6a6922e46f55827", size = 52340 },
 ]
 
 [[package]]
@@ -3604,6 +3619,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/86/eb/20b6cdf273913d0ad05a6a14aed4b9a85591c18a987a3d47f20fa13dcc47/websockets-15.0.1-cp313-cp313-win32.whl", hash = "sha256:ba9e56e8ceeeedb2e080147ba85ffcd5cd0711b89576b83784d8605a7df455fa", size = 176393 },
     { url = "https://files.pythonhosted.org/packages/1b/6c/c65773d6cab416a64d191d6ee8a8b1c68a09970ea6909d16965d26bfed1e/websockets-15.0.1-cp313-cp313-win_amd64.whl", hash = "sha256:e09473f095a819042ecb2ab9465aee615bd9c2028e4ef7d933600a8401c79561", size = 176837 },
     { url = "https://files.pythonhosted.org/packages/fa/a8/5b41e0da817d64113292ab1f8247140aac61cbf6cfd085d6a0fa77f4984f/websockets-15.0.1-py3-none-any.whl", hash = "sha256:f7a866fbc1e97b5c617ee4116daaa09b722101d4a3c170c787450ba409f9736f", size = 169743 },
+]
+
+[[package]]
+name = "win32-setctime"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b3/8f/705086c9d734d3b663af0e9bb3d4de6578d08f46b1b101c2442fd9aecaa2/win32_setctime-1.2.0.tar.gz", hash = "sha256:ae1fdf948f5640aae05c511ade119313fb6a30d7eabe25fef9764dca5873c4c0", size = 4867 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/07/c6fe3ad3e685340704d314d765b7912993bcb8dc198f0e7a89382d37974b/win32_setctime-1.2.0-py3-none-any.whl", hash = "sha256:95d644c4e708aba81dc3704a116d8cbc974d70b3bdb8be1d150e36be6e9d1390", size = 4083 },
 ]
 
 [[package]]
