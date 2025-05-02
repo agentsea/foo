@@ -61,7 +61,7 @@ def learn_task(
         raise ValueError(f"Skill not found: {skill_id}")
 
     skill = skills[0]
-    logger.info(f"skill: {skill.to_v1().model_dump()}")
+    # logger.info(f"skill: {skill.to_v1().model_dump()}")
     v1_agent = learn_model.agent
 
     if v1_agent:

@@ -3,7 +3,7 @@ api_version: v1
 kind: TaskAgent
 name: "foo"
 description: "An agent that can learn any task"
-cmd: "uv run python -m foo.server"
+cmd: "uv run --prerelease=allow python -u -m foo.server"
 img_repo: "us-central1-docker.pkg.dev/agentsea-dev/guisurfer/foo"
 tags:
   - "gui"

@@ -69,16 +69,16 @@ class Foo(TaskAgent):
             task (Task): The task
             skill (Skill): The associated skill
         """
-        print("\nlearning task: ", task.id)
-        print("with user: ", user.model_dump())
+        print("\nlearning task: ", task.id, flush=True)
+        print("with user: ", user.model_dump(), flush=True)
         from nebu import Namespace
         from orign.zoo.processors.unlsoth_trainer import TrainingRequest, UnslothSFT
 
         if not task.remote or not task.auth_token:
             raise ValueError("Task remote or token not set")
 
-        print("task remote: ", task.remote)
-        print("task auth_token: ", task.auth_token)
+        print("task remote: ", task.remote, flush=True)
+        print("task auth_token: ", task.auth_token, flush=True)
 
         internal_auth_token = os.getenv("AGENTSEA_API_KEY")
         if not internal_auth_token:
@@ -87,9 +87,13 @@ class Foo(TaskAgent):
         if not skill.name:
             raise ValueError("Skill name not set")
 
-        print("\ncreating namespace with internal auth token: ", internal_auth_token)
+        print(
+            "\ncreating namespace with internal auth token: ",
+            internal_auth_token,
+            flush=True,
+        )
         Namespace("agentsea", owner="agentsea", api_key=internal_auth_token)
-        print("namespace created")
+        print("namespace created", flush=True)
 
         print("current env: ", os.environ)
 
@@ -127,7 +131,9 @@ class Foo(TaskAgent):
         print("val_adapter: ", val_adapter)
 
         print("creating unsloth processor...")
-        train_unsloth_sft = UnslothSFT(namespace="agentsea", hot_reload=False)
+        train_unsloth_sft = UnslothSFT(
+            namespace="agentsea", hot_reload=False, debug=True
+        )
         print("unsloth processor created: ", train_unsloth_sft)
 
         ###
