@@ -55,11 +55,12 @@ class ReasonedAction(BaseModel):
 class Actor:
     """An actor that uses ms-swift and orign"""
 
-    def __init__(self, adapter_name: str, api_key: str):
+    def __init__(self, adapter_name: str, api_key: str, user_key: Optional[str] = None):
         from orign.zoo.processors.qwen_server import QwenVLServer
 
         self.model = QwenVLServer(namespace="agentsea", hot_reload=False)
         self.model.api_key = api_key  # type: ignore
+        self.user_key = user_key  # type: ignore
         self.adapter_name = adapter_name
 
     def act(self, task: Task, device: Desktop, history: List[Step]) -> Step:
@@ -114,7 +115,7 @@ class Actor:
         )
 
         print("request", request)
-        response = self.model(request, wait=True, api_key=task.auth_token)  # type: ignore
+        response = self.model(request, wait=True, user_key=task.auth_token)  # type: ignore
         print("response", response)
 
         if not isinstance(response, ChatResponse):

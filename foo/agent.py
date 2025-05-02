@@ -523,13 +523,14 @@ class Foo(TaskAgent):
                 raise ValueError("Dataset URI not found")
 
             print("training validation buffer...")
-            print("training with auth token: ", task.auth_token)
+            print("training with user auth token: ", task.auth_token)
             train_unsloth_sft(
                 data=TrainingRequest(  # type: ignore
                     adapter=self.get_val_adapter_name(skill, task.owner_id, user),
                     dataset=dataset.dataset_uri,
                 ),
-                api_key=task.auth_token,
+                api_key=internal_auth_token,
+                user_key=task.auth_token,
             )
             print("sent training to validation buffer")
 
@@ -542,7 +543,7 @@ class Foo(TaskAgent):
                 raise ValueError("Dataset URI not found")
 
             print("training actor buffer...")
-            print("training with auth token: ", task.auth_token)
+            print("training with user auth token: ", task.auth_token)
             train_unsloth_sft(
                 data=TrainingRequest(  # type: ignore
                     adapter=self.get_actor_adapter_name(skill, task.owner_id, user),
@@ -643,8 +644,9 @@ class Foo(TaskAgent):
 
             console.print("getting actor...")
             actor = self.get_actor(
-                api_key=task.auth_token,
+                api_key=internal_auth_token,
                 adapter=adapter,
+                user_key=task.auth_token,
             )
             console.print("got actor")
 
@@ -855,8 +857,9 @@ class Foo(TaskAgent):
         self,
         api_key: str,
         adapter: str,
+        user_key: Optional[str] = None,
     ) -> Actor:
-        return Actor(adapter_name=adapter, api_key=api_key)
+        return Actor(adapter_name=adapter, api_key=api_key, user_key=user_key)
 
     def label_task(
         self, remote: str, token: str, task: Task, key: str, value: str
