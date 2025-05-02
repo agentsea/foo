@@ -144,9 +144,9 @@ if __name__ == "__main__":
     print(f"task_json: {task_json}", flush=True)
 
     v1learn = V1LearnTask.model_validate_json(task_json)
-    token = os.getenv("AGENTSEA_API_KEY")
+    token = os.getenv("USER_API_KEY")
     if not token:
-        raise ValueError("AGENTSEA_API_KEY not set")
+        raise ValueError("USER_API_KEY not set")
 
     print(f"token: {token}", flush=True)
 
