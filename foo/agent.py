@@ -87,7 +87,7 @@ class Foo(TaskAgent):
         if not skill.name:
             raise ValueError("Skill name not set")
 
-        print("\ncreating namespace...")
+        print("\ncreating namespace with internal auth token: ", internal_auth_token)
         Namespace("agentsea", owner="agentsea", api_key=internal_auth_token)
         print("namespace created")
 
