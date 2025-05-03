@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -14,7 +15,7 @@ from chatmux.openai import (
     UserMessageContentPart,
 )
 from json_repair import repair_json
-from nebu import V1StreamResponseMessage
+from nebu import V1EnvVar
 from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
@@ -58,7 +59,19 @@ class Actor:
     def __init__(self, adapter_name: str, api_key: str, user_key: Optional[str] = None):
         from orign.zoo.processors.qwen_server import QwenVLServer
 
-        self.model = QwenVLServer(namespace="agentsea", hot_reload=False, debug=True)
+        if not os.getenv("HUGGINGFACE_HUB_TOKEN"):
+            raise ValueError("HUGGINGFACE_HUB_TOKEN not set")
+
+        env = [
+            V1EnvVar(
+                key="HUGGINGFACE_HUB_TOKEN",
+                value=os.getenv("HUGGINGFACE_HUB_TOKEN"),
+            ),
+        ]
+
+        self.model = QwenVLServer(
+            namespace="agentsea", hot_reload=False, debug=True, env=env
+        )
         self.model.api_key = api_key  # type: ignore
         self.user_key = user_key  # type: ignore
         self.adapter_name = adapter_name

@@ -8,6 +8,7 @@ import requests
 from agentcore.models import V1UserProfile
 from agentdesk import Desktop
 from devicebay import Device
+from nebu import V1EnvVar
 from orign.config import GlobalConfig, ServerConfig
 from pydantic import BaseModel
 from rich.console import Console
@@ -130,9 +131,20 @@ class Foo(TaskAgent):
         print("\nactor_adapter: ", actor_adapter)
         print("val_adapter: ", val_adapter)
 
+        if not os.getenv("HUGGINGFACE_HUB_TOKEN"):
+            raise ValueError("HUGGINGFACE_HUB_TOKEN not set")
+
         print("creating unsloth processor...")
         train_unsloth_sft = UnslothSFT(
-            namespace="agentsea", hot_reload=False, debug=True
+            namespace="agentsea",
+            hot_reload=False,
+            debug=True,
+            env=[
+                V1EnvVar(
+                    key="HUGGINGFACE_HUB_TOKEN",
+                    value=os.getenv("HUGGINGFACE_HUB_TOKEN"),
+                ),
+            ],
         )
         print("unsloth processor created: ", train_unsloth_sft)
 
@@ -439,7 +451,7 @@ class Foo(TaskAgent):
                 )
 
                 send_actor_sft.append(oai_prompt)
-                send_actor_sft.append(oai_reason_prompt)
+                # send_actor_sft.append(oai_reason_prompt)
                 # send_base_actor_sft.append(oai_prompt)
                 # send_base_actor_sft.append(oai_reason_prompt)
 
