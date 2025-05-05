@@ -546,6 +546,7 @@ class Foo(TaskAgent):
                 data=TrainingRequest(  # type: ignore
                     adapter=self.get_val_adapter_name(skill, task.owner_id, user),
                     dataset=dataset.dataset_uri,
+                    labels={"skill": skill.id},
                 ),
                 api_key=internal_auth_token,
                 user_key=task.auth_token,
@@ -566,6 +567,7 @@ class Foo(TaskAgent):
                 data=TrainingRequest(  # type: ignore
                     adapter=self.get_actor_adapter_name(skill, task.owner_id, user),
                     dataset=dataset.dataset_uri,
+                    labels={"skill": skill.id},
                 ),
                 api_key=internal_auth_token,
                 user_key=task.auth_token,
