@@ -58,6 +58,7 @@ class Actor:
     """An actor that uses ms-swift and orign"""
 
     def __init__(self, adapter_name: str, api_key: str, user_key: Optional[str] = None):
+        from orign import Adapter
         from orign.zoo.processors.qwen_server import QwenVLServer
 
         if not os.getenv("HUGGINGFACE_HUB_TOKEN"):
@@ -76,6 +77,15 @@ class Actor:
         self.model.api_key = api_key  # type: ignore
         self.user_key = user_key  # type: ignore
         self.adapter_name = adapter_name
+
+        namespace, name = adapter_name.split("/")
+        console.print(f"checking for adapter: {namespace}/{name}", style="white")
+        adapters = Adapter.get(namespace=namespace, name=name, api_key=user_key)
+        if not adapters:
+            console.print(
+                f"\n>>>> Adapter {adapter_name} not found, using default", style="red"
+            )
+            self.adapter_name = "unsloth/Qwen2.5-VL-32B-Instruct"  # TODO
 
     def act(self, task: Task, device: Desktop, history: List[Step]) -> Step:
         start_time = time.time()
