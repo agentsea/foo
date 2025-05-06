@@ -1,4 +1,5 @@
 import base64
+import os
 from dataclasses import dataclass
 from io import BytesIO
 from typing import List, Optional
@@ -17,6 +18,7 @@ from chatmux.openai import (
 )
 from devicebay import Device
 from json_repair import repair_json
+from nebu import V1EnvVar
 from orign import Message, Processor, processor
 from PIL import Image
 from pydantic import BaseModel
@@ -61,7 +63,7 @@ pip install surfkit chatmux orign rich
 
 @processor(image="python:3.11-slim", platform="runpod", setup_script=setup)  # type: ignore
 def agent(message: Message[V1Task]) -> V1Task:
-    from infer import infer_qwen_vl
+    from orign.zoo.processors.qwen_server import QwenVLServer
 
     print(message)
 
@@ -90,7 +92,17 @@ def agent(message: Message[V1Task]) -> V1Task:
         raise Exception(err)
 
     history = []
-
+    infer_qwen_vl = QwenVLServer(
+        namespace="agentsea",
+        hot_reload=False,
+        debug=True,
+        env=[
+            V1EnvVar(
+                key="HUGGINGFACE_HUB_TOKEN",
+                value=os.getenv("HUGGINGFACE_HUB_TOKEN"),
+            ),
+        ],
+    )
     for i in range(task.max_steps):
         print(f"Step {i+1} of {task.max_steps}")
 
