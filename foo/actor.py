@@ -1,4 +1,5 @@
 import os
+import time
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -77,6 +78,7 @@ class Actor:
         self.adapter_name = adapter_name
 
     def act(self, task: Task, device: Desktop, history: List[Step]) -> Step:
+        start_time = time.time()
         skill = task.skill
         if not skill:
             raise ValueError("No skill found")
@@ -88,6 +90,10 @@ class Actor:
         console.print(f"Screenshot dimensions: {width} x {height}")
 
         screenshot_b64 = image_to_b64(s0)
+        screenshot_time = time.time()
+        console.print(
+            f"Screenshot took {screenshot_time - start_time} seconds", style="white"
+        )
 
         # Get the current mouse coordinates
         x, y = device.mouse_coordinates()
@@ -128,8 +134,13 @@ class Actor:
         )
 
         print("request", request)
+        chat_start_time = time.time()
         response = self.model(request, wait=True, user_key=task.auth_token)  # type: ignore
         print("response", response)
+        chat_end_time = time.time()
+        console.print(
+            f"Chat took {chat_end_time - chat_start_time} seconds", style="white"
+        )
 
         if not isinstance(response, ChatResponse):
             # TODO: fix in processor
@@ -179,6 +190,8 @@ class Actor:
             prompt=event,
             reason=selection.reason,
         )
+        step_end_time = time.time()
+        console.print(f"Step took {step_end_time - start_time} seconds", style="white")
 
         return step
 

@@ -546,7 +546,7 @@ class Foo(TaskAgent):
                 data=TrainingRequest(  # type: ignore
                     adapter=self.get_val_adapter_name(skill, task.owner_id, user),
                     dataset=dataset.dataset_uri,
-                    labels={"skill": skill.id},
+                    labels={"skill": skill.id, "task": task.id},
                 ),
                 api_key=internal_auth_token,
                 user_key=task.auth_token,
@@ -567,7 +567,7 @@ class Foo(TaskAgent):
                 data=TrainingRequest(  # type: ignore
                     adapter=self.get_actor_adapter_name(skill, task.owner_id, user),
                     dataset=dataset.dataset_uri,
-                    labels={"skill": skill.id},
+                    labels={"skill": skill.id, "task": task.id},
                 ),
                 api_key=internal_auth_token,
                 user_key=task.auth_token,
@@ -693,7 +693,7 @@ class Foo(TaskAgent):
                     time.sleep(10)
                     return task
 
-                time.sleep(2)
+                # time.sleep(2)
 
             task.status = TaskStatus.FAILED
             task.save()
@@ -732,6 +732,7 @@ class Foo(TaskAgent):
         Returns:
             Tuple[Optional[Step], bool]: A tuple containing the step taken and whether the task is complete
         """
+        start_time = time.time()
         try:
             # Check to see if the task has been cancelled
             if task.remote:
@@ -746,9 +747,20 @@ class Foo(TaskAgent):
                     task.save()
                 return None, True
 
+            refresh_time = time.time()
+            console.print(
+                f"Refresh took {refresh_time - start_time} seconds", style="white"
+            )
+
             console.print("taking action...", style="white")
+            action_start_time = time.time()
 
             step = actor.act(task, device, history)  # type: ignore
+            action_end_time = time.time()
+            console.print(
+                f"Actor took {action_end_time - action_start_time} seconds",
+                style="white",
+            )
 
             if step.task:
                 task = step.task
@@ -774,7 +786,13 @@ class Foo(TaskAgent):
 
             # Take the selected action
             try:
+                action_start_time = time.time()
                 action_response = device.use(action, **step.action.parameters)
+                action_end_time = time.time()
+                console.print(
+                    f"Action took {action_end_time - action_start_time} seconds",
+                    style="white",
+                )
             except Exception as e:
                 raise ValueError(f"Trouble using action: {e}")
 
@@ -794,6 +812,7 @@ class Foo(TaskAgent):
                 annotator_type=ReviewerType.AGENT.value,
             )
 
+            record_action_start_time = time.time()
             # Record the action for feedback and tuning
             task.record_action(
                 state=step.state,
@@ -803,6 +822,17 @@ class Foo(TaskAgent):
                 agent_id=self.name(),
                 model=step.model_id,
                 reviewables=[reviewable],
+            )
+            record_action_end_time = time.time()
+            console.print(
+                f"Record action took {record_action_end_time - record_action_start_time} seconds",
+                style="white",
+            )
+
+            end_time = time.time()
+            console.print(
+                f"Total took {end_time - start_time} seconds",
+                style="white",
             )
 
             return step, False
