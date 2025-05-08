@@ -78,12 +78,20 @@ class Foo(TaskAgent):
         if not task.remote or not task.auth_token:
             raise ValueError("Task remote or token not set")
 
+        self._get_and_print_user_profile(
+            task.auth_token, "task.auth_token from learn_task"
+        )
+
         print("task remote: ", task.remote, flush=True)
         print("task auth_token: ", task.auth_token, flush=True)
 
         internal_auth_token = os.getenv("AGENTSEA_API_KEY")
         if not internal_auth_token:
             raise ValueError("AGENTSEA_API_KEY not set")
+
+        self._get_and_print_user_profile(
+            internal_auth_token, "internal_auth_token from learn_task"
+        )
 
         if not skill.name:
             raise ValueError("Skill name not set")
@@ -621,6 +629,13 @@ class Foo(TaskAgent):
                 "assistant", "I'll post debug messages here", thread="debug"
             )
 
+            if not task.auth_token:
+                raise ValueError("Task auth token not set")
+
+            self._get_and_print_user_profile(
+                task.auth_token, "task.auth_token from solve_task"
+            )
+
             internal_auth_token = os.getenv("AGENTSEA_API_KEY")
             if not internal_auth_token:
                 raise ValueError("AGENTSEA_API_KEY not set")
@@ -973,6 +988,46 @@ class Foo(TaskAgent):
         """Initialize the agent class"""
         # <INITIALIZE AGENT HERE>
         return
+
+    def _get_and_print_user_profile(self, token: str, token_description: str):
+        if not token:
+            print(
+                f"Token '{token_description}' is not set. Skipping user profile fetch.",
+                flush=True,
+            )
+            return
+
+        auth_server_url = os.getenv("AGENTSEA_AUTH_SERVER")
+        if not auth_server_url:
+            print(
+                "AGENTSEA_AUTH_SERVER environment variable is not set. Skipping user profile fetch.",
+                flush=True,
+            )
+            return
+
+        print(
+            f"Attempting to get user profile with {token_description}: {token[:5]}...",
+            flush=True,
+        )
+        try:
+            response = requests.get(
+                f"{auth_server_url}/v1/users/me",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            response.raise_for_status()
+            user_profile = response.json()
+            print(
+                f"User profile ({token_description}): ",
+                JSON.from_data(user_profile),
+                flush=True,
+            )
+        except requests.exceptions.RequestException as e:
+            print(f"Error getting user profile ({token_description}): {e}", flush=True)
+        except Exception as e:
+            print(
+                f"An unexpected error occurred while fetching user profile ({token_description}): {e}",
+                flush=True,
+            )
 
 
 Agent = Foo
