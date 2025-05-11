@@ -909,6 +909,7 @@ dependencies = [
     { name = "requests" },
     { name = "sqlalchemy" },
     { name = "surfkit" },
+    { name = "typer" },
     { name = "uvicorn" },
 ]
 
@@ -932,6 +933,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.31.0" },
     { name = "sqlalchemy", specifier = ">=2.0.27" },
     { name = "surfkit", specifier = "==0.1.410" },
+    { name = "typer", specifier = ">=0.9.4" },
     { name = "uvicorn", specifier = ">=0.34.2" },
 ]
 

@@ -640,6 +640,9 @@ class Foo(TaskAgent):
             if not internal_auth_token:
                 raise ValueError("AGENTSEA_API_KEY not set")
 
+            print("device: ", device)
+            print("device type: ", type(device))
+            print("device dict: ", device.__dict__)
             # Check that the device we received is one we support
             if not isinstance(device, Desktop):
                 raise ValueError("Only desktop devices supported")

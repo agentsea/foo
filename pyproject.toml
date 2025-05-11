@@ -16,6 +16,7 @@ dependencies = [
     "uvicorn>=0.34.2",
     "surfkit==0.1.410",
     "orign==0.2.84",
+    "typer>=0.9.4",
 ]
 
 [dependency-groups]
