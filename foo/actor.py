@@ -96,16 +96,16 @@ class Actor:
         # Take a screenshot of the desktop and post a message with it
         screenshots = device.take_screenshots(count=1)
         s0 = screenshots[0]
-        s3_upload_result = upload_pil_image_to_s3(
-            s0, "nebulous-rs", "images/screenshots", generate_random_filename=True
-        )
-        print("s3_upload_result", s3_upload_result)
-        if not s3_upload_result.success:
-            console.print(
-                f"Error uploading screenshot to S3: {s3_upload_result.error}",
-                style="red",
-            )
-            raise ValueError("Error uploading screenshot to S3")
+        # s3_upload_result = upload_pil_image_to_s3(
+        #     s0, "nebulous-rs", "images/screenshots", generate_random_filename=True
+        # )
+        # print("s3_upload_result", s3_upload_result)
+        # if not s3_upload_result.success:
+        #     console.print(
+        #         f"Error uploading screenshot to S3: {s3_upload_result.error}",
+        #         style="red",
+        #     )
+        #     raise ValueError("Error uploading screenshot to S3")
 
         width, height = s0.size  # Get the dimensions of the screenshot
         console.print(f"Screenshot dimensions: {width} x {height}")
