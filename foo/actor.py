@@ -23,7 +23,7 @@ from rich.json import JSON
 from skillpacks import EnvState, V1Action
 from taskara import Task
 
-from .img import image_to_b64, upload_pil_image_to_s3
+from .img import image_to_b64, upload_image_to_gcs
 
 console = Console(force_terminal=True)
 
@@ -96,6 +96,8 @@ class Actor:
         # Take a screenshot of the desktop and post a message with it
         screenshots = device.take_screenshots(count=1)
         s0 = screenshots[0]
+        gcs_url = upload_image_to_gcs(s0)
+        print("gcs_url", gcs_url)
         # s3_upload_result = upload_pil_image_to_s3(
         #     s0, "nebulous-rs", "images/screenshots", generate_random_filename=True
         # )
@@ -138,7 +140,7 @@ class Actor:
                         UserMessageContentPart(
                             root=ImageContentPart(
                                 type="image_url",
-                                image_url=ImageUrl(url=screenshot_b64, detail="auto"),
+                                image_url=ImageUrl(url=gcs_url, detail="auto"),
                             )
                         ),
                     ]
