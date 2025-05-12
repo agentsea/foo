@@ -928,7 +928,7 @@ requires-dist = [
     { name = "fastapi", extras = ["all"], specifier = ">=0.109" },
     { name = "json-repair", specifier = ">=0.30.2" },
     { name = "openai", specifier = ">=1.59.3" },
-    { name = "orign", specifier = "==0.2.90" },
+    { name = "orign", specifier = "==0.2.91" },
     { name = "pydantic", specifier = ">=2.6.3" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "sqlalchemy", specifier = ">=2.0.27" },
@@ -1997,7 +1997,7 @@ wheels = [
 
 [[package]]
 name = "orign"
-version = "0.2.90"
+version = "0.2.91"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chatmux" },
@@ -2009,9 +2009,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "shortuuid" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/69/45/78840d27b2b4367ed6fbe83982c4bd84f46122de9303ed60748f17f3478a/orign-0.2.90.tar.gz", hash = "sha256:a096e27aeec2e0d2b512db96b28bdf0e8185338285f29bc2f781f6083c0eca1c", size = 46212 }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/ec/ab22f149e5417153b196754cf04da620360cc1d44ac9f974d652672e94bb/orign-0.2.91.tar.gz", hash = "sha256:c78e655bb4cc04da27cf3f7f8c86d60bf0e2218545792f21e69cedf832779bd3", size = 43900 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4e/52/7724f3270e61ead9f18510a191edf1f4de6e8651150139debcb4bfa84ffa/orign-0.2.90-py3-none-any.whl", hash = "sha256:991872d3f2bbcbe2e48755119879dad9532b3254440b8f7d577759f1d3d7a609", size = 55323 },
+    { url = "https://files.pythonhosted.org/packages/cb/7c/c94311acfe2aa1d51cf391bcba131d9feba0978735c6dfecdb87c0b8d74c/orign-0.2.91-py3-none-any.whl", hash = "sha256:87bec66512522aec3190b84788936e7c856e64d6495ca82956a1983876efbf60", size = 52913 },
 ]
 
 [[package]]
