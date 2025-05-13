@@ -278,6 +278,7 @@ def upload_image_to_gcs(pil_image: Image.Image, desired_format: str = "PNG") -> 
         # Upload the temporary file to Google Cloud Storage
         blob.upload_from_filename(image_temp_file_path)
         blob.content_type = mime_type_str
+        blob.make_public()  # Make the blob publicly readable
         # Assuming public_url works as intended (blob is made public by bucket policy or default ACLs)
         public_url_val = blob.public_url
 
