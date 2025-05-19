@@ -928,7 +928,7 @@ requires-dist = [
     { name = "fastapi", extras = ["all"], specifier = ">=0.109" },
     { name = "json-repair", specifier = ">=0.30.2" },
     { name = "openai", specifier = ">=1.59.3" },
-    { name = "orign", specifier = "==0.2.100" },
+    { name = "orign", specifier = "==0.2.101" },
     { name = "pydantic", specifier = ">=2.6.3" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "sqlalchemy", specifier = ">=2.0.27" },
@@ -1997,7 +1997,7 @@ wheels = [
 
 [[package]]
 name = "orign"
-version = "0.2.100"
+version = "0.2.101"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chatmux" },
@@ -2007,11 +2007,12 @@ dependencies = [
     { name = "pillow" },
     { name = "pydantic" },
     { name = "pyyaml" },
+    { name = "rclone-python" },
     { name = "shortuuid" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/79/77/6098c00445c44a9d8c8dbaf3408328c4a7565b64acc9c1b44f1c6a895fbc/orign-0.2.100.tar.gz", hash = "sha256:990056b5133f7b54fc58d7a551cac3c498878a981c80295a63cb796c0d70d7a6", size = 46806 }
+sdist = { url = "https://files.pythonhosted.org/packages/ff/8e/150d7ca0bb949f73d2b8b2226378386b3d5660d8a5687665dc6b53102399/orign-0.2.101.tar.gz", hash = "sha256:0aa3b302d1b0b5192035d99525de675fff535adf88ae36cb66f22ba0c2889581", size = 47351 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1c/9d/2c2f9561617f7da927cca623c37563d0c143aa07d0be97e920fe2ddcbdf7/orign-0.2.100-py3-none-any.whl", hash = "sha256:f773085fca0fa4595786dabcd2ebb1aaccacd85484665e18706221fcaced5a4f", size = 55853 },
+    { url = "https://files.pythonhosted.org/packages/f4/a1/9211e0f715eb50224328b90486fbf3038ad448e3a51b4360b3dd47b2bce8/orign-0.2.101-py3-none-any.whl", hash = "sha256:23b8a4607a2c5c0af7332b6d9b57c3f73f6d524b20851cfd65f3af18ba8e72b4", size = 56276 },
 ]
 
 [[package]]
@@ -2772,6 +2773,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/76/0c/3a633acd762aa6655fcb71fa841907eae0ab1e8582ff494b137266de341d/pyzmq-26.4.0-pp311-pypy311_pp73-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:43b03c1ceea27c6520124f4fb2ba9c647409b9abdf9a62388117148a90419494", size = 798248 },
     { url = "https://files.pythonhosted.org/packages/cd/cc/6c99c84aa60ac1cc56747bed6be8ce6305b9b861d7475772e7a25ce019d3/pyzmq-26.4.0-pp311-pypy311_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7731abd23a782851426d4e37deb2057bf9410848a4459b5ede4fe89342e687a9", size = 756757 },
     { url = "https://files.pythonhosted.org/packages/13/9c/d8073bd898eb896e94c679abe82e47506e2b750eb261cf6010ced869797c/pyzmq-26.4.0-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:a222ad02fbe80166b0526c038776e8042cd4e5f0dec1489a006a1df47e9040e0", size = 555371 },
+]
+
+[[package]]
+name = "rclone-python"
+version = "0.1.21"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "rich" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e3/06/ad0ebd8d7a767934a797daa6950bc91f072603a73bb529556d18d17e3c54/rclone_python-0.1.21.tar.gz", hash = "sha256:c19c9496da38254879b505e58ef832a556b691bd08a897ee27f4e885dac25970", size = 21071 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ef/c2/a8830c22dd3f86a9b1a39fc3e4bc63fa62e98401ffaa25bb762669336292/rclone_python-0.1.21-py3-none-any.whl", hash = "sha256:22860edcd0484bd375b34b4a821f9e9837588f8e277cc1b67326dd950b1a7144", size = 14925 },
 ]
 
 [[package]]
