@@ -780,52 +780,9 @@ class Foo(TaskAgent):
                 style="white",
             )
 
-            if step.task:
-                task = step.task
-
-            # The agent will return 'end' if it believes it's finished
-            if step.action.name == "end":
-                console.print("final result: ", style="green")
-                console.print(JSON.from_data(step.action.parameters))
-                task.post_message(
-                    "assistant",
-                    f"✅ I think the task is done, please review the result: {step.action.parameters['value']}",
-                )
-                task.status = TaskStatus.FINISHED
-                task.save()
-                return step, True
-
-            # Find the selected action in the tool
-            action = device.find_action(step.action.name)
-            console.print(f"found action: {action}", style="blue")
-            if not action:
-                console.print(f"action returned not found: {step.action.name}")
-                raise SystemError("action not found")
-
-            # Take the selected action
-            try:
-                action_start_time = time.time()
-                action_response = device.use(action, **step.action.parameters)
-                action_end_time = time.time()
-                console.print(
-                    f"Action took {action_end_time - action_start_time} seconds",
-                    style="white",
-                )
-            except Exception as e:
-                raise ValueError(f"Trouble using action: {e}")
-
-            console.print(f"action output: {action_response}", style="blue")
-            if action_response:
-                task.post_message(
-                    "assistant", f"👁️ Result from taking action: {action_response}"
-                )
-
-            if not step.reason:
-                raise ValueError("No reason provided")
-
             reviewable = AnnotationReviewable(
                 key="reason",
-                value=step.reason,
+                value=step.reason,  # type: ignore
                 annotator=self.name(),
                 annotator_type=ReviewerType.AGENT.value,
             )
@@ -836,7 +793,7 @@ class Foo(TaskAgent):
                 state=step.state,
                 action=step.action,
                 tool=device.ref(),
-                result=action_response,
+                result=step.result,
                 agent_id=self.name(),
                 model=step.model_id,
                 reviewables=[reviewable],

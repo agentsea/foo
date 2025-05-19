@@ -65,7 +65,7 @@ def _determine_owner_and_token(config: GlobalConfig) -> tuple[str, Optional[str]
         logger.info(
             "No Hub API key found in global config. Task will use default owner and no token unless tracker provides one."
         )
-    return owner, task_token
+    return owner, task_token  # type: ignore
 
 
 def _setup_tracker(

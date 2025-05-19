@@ -21,9 +21,9 @@ from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
 from skillpacks import EnvState, V1Action
-from taskara import Task
+from taskara import Task, TaskStatus
 
-from .img import image_to_b64, upload_image_to_gcs
+from .img import upload_image_to_gcs
 
 console = Console(force_terminal=True)
 
@@ -47,6 +47,8 @@ class Step:
     model_id: Optional[str] = None
     prompt: Optional[V1ChatEvent] = None
     reason: Optional[str] = None
+    end: bool = False
+    result: Optional[str] = None
 
 
 class ReasonedAction(BaseModel):
@@ -112,7 +114,7 @@ class Actor:
         width, height = s0.size  # Get the dimensions of the screenshot
         console.print(f"Screenshot dimensions: {width} x {height}")
 
-        screenshot_b64 = image_to_b64(s0)
+        # screenshot_b64 = image_to_b64(s0)
         screenshot_time = time.time()
         console.print(
             f"Screenshot took {screenshot_time - start_time} seconds", style="white"
@@ -199,6 +201,47 @@ class Actor:
             console.print(f"Response failed to parse: {e}", style="red")
             raise
 
+        # The agent will return 'end' if it believes it's finished
+        end = False
+        if selection.action.name == "end":
+            console.print("final result: ", style="green")
+            console.print(JSON.from_data(selection.action.parameters))
+            task.post_message(
+                "assistant",
+                f"✅ I think the task is done, please review the result: {selection.action.parameters['value']}",
+            )
+            task.status = TaskStatus.FINISHED
+            task.save()
+            end = True
+
+        # Find the selected action in the tool
+        action = device.find_action(selection.action.name)
+        console.print(f"found action: {action}", style="blue")
+        if not action:
+            console.print(f"action returned not found: {selection.action.name}")
+            raise SystemError("action not found")
+
+        # Take the selected action
+        try:
+            action_start_time = time.time()
+            action_response = device.use(action, **selection.action.parameters)
+            action_end_time = time.time()
+            console.print(
+                f"Action took {action_end_time - action_start_time} seconds",
+                style="white",
+            )
+        except Exception as e:
+            raise ValueError(f"Trouble using action: {e}")
+
+        console.print(f"action output: {action_response}", style="blue")
+        if action_response:
+            task.post_message(
+                "assistant", f"👁️ Result from taking action: {action_response}"
+            )
+
+        if not selection.reason:
+            raise ValueError("No reason provided")
+
         event = V1ChatEvent(
             request=request,
             response=response,
@@ -212,6 +255,8 @@ class Actor:
             model_id=self.adapter_name,
             prompt=event,
             reason=selection.reason,
+            end=end,
+            result=action_response,
         )
         step_end_time = time.time()
         console.print(f"Step took {step_end_time - start_time} seconds", style="white")
