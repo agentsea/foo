@@ -810,7 +810,7 @@ class Foo(TaskAgent):
                 style="white",
             )
 
-            return step, False
+            return step, step.end
 
         except Exception as e:
             print("Exception taking action: ", e)
