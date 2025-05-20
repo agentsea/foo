@@ -73,7 +73,7 @@ class Foo(TaskAgent):
         print("\nlearning task: ", task.id, flush=True)
         print("with user: ", user.model_dump(), flush=True)
         from nebu import Namespace
-        from orign.zoo.processors.unlsoth_trainer import TrainingRequest, UnslothSFT
+        from orign.zoo.processors.unsloth_trainer import TrainingRequest, UnslothSFT
 
         if not task.remote or not task.auth_token:
             raise ValueError("Task remote or token not set")
@@ -204,7 +204,7 @@ class Foo(TaskAgent):
         console.print("got ctx")
 
         for i, action in enumerate(task.episode.actions):
-            console.print("action: ", action, "\n\n")
+            console.print("\n\n========\naction: ", action.__dict__, "\n\n")
 
             approved = False
             action_correction = None
