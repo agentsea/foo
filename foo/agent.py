@@ -363,21 +363,29 @@ class Foo(TaskAgent):
                 exclude_unset=True, exclude_none=True, exclude_defaults=True
             )
 
+            has_next_action = False
+            next_action = None
             if i + 1 < len(task.episode.actions):
                 next_action = task.episode.actions[i + 1]
+                has_next_action = True
             else:
                 console.print("no next action", style="red")
-                continue
-            if not next_action.state.images:
+            if not next_action or not next_action.state.images:
                 console.print("no next state images", style="red")
-                continue
+                has_next_action = False
 
-            end_state = next_action.state.images[0]
+            end_state = None
+            if has_next_action:
+                end_state = next_action.state.images[0]  # type: ignore
+
+            console.print("end_state: ", end_state)
+            console.print("has_next_action: ", has_next_action)
+            console.print("next_action: ", next_action)
 
             if not task.description:
                 raise ValueError("Task description not set")
 
-            if reason_best:
+            if reason_best and end_state:
                 reason_oai_prompt = create_reason_prompt(
                     image1_url=before_state,
                     image2_url=end_state,
@@ -398,7 +406,7 @@ class Foo(TaskAgent):
                     reason_oai_prompt_copy["rejected_response"] = reason
                     # send_reason_annot_dpo.append(reason_oai_prompt_copy)
 
-            if description_best:
+            if description_best and end_state:
                 description_oai_prompt = create_description_prompt(
                     image1_url=before_state,
                     image2_url=end_state,
@@ -420,7 +428,7 @@ class Foo(TaskAgent):
                     description_oai_prompt_copy["rejected_response"] = description
                     # send_description_annot_dpo.append(description_oai_prompt_copy)
 
-            if validation_best:
+            if validation_best and end_state:
                 validation_oai_prompt = create_validation_prompt(
                     image1_url=before_state,
                     image2_url=end_state,
@@ -468,7 +476,7 @@ class Foo(TaskAgent):
 
                 # {"messages": [{"role": "system", "content": "You are a useful and harmless math calculator"}, {"role": "user", "content": "What is 1 + 1?"}, {"role": "assistant", "content": "It equals 2"}, {"role": "user", "content": "What about adding 1?"}, {"role": "assistant", "content": "It equals 3"}], "rejected_response": "I don't know"}
 
-            if validation:
+            if validation and end_state:
                 console.print("adding to val sft buffer...")
                 val_ctx = (
                     "You are a helpful assistant judging if actions taken on a computer are correct. \n"
@@ -502,17 +510,6 @@ class Foo(TaskAgent):
                 response = (
                     f"<think>{response_val}</think><answer>{approved_text}</answer>"
                 )
-
-                if i + 1 < len(task.episode.actions):
-                    next_action = task.episode.actions[i + 1]
-                else:
-                    console.print("no next action", style="red")
-                    continue
-                if not next_action.state.images:
-                    console.print("no next state images", style="red")
-                    continue
-
-                end_state = next_action.state.images[0]
 
                 val_oai_prompt = create_validation_actor_prompt(
                     val_ctx=val_ctx,
