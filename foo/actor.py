@@ -323,6 +323,7 @@ class Actor:
             "based on this image, you will decide what action to take next.\n"
             "Please return your response formatted like <think>...</think><answer>...</answer> "
             "where the answer is the action you want to take as a raw JSON object.\n\n"
+            "When you finish the task, please return the action 'end'.\n"
             "I've provided you with the most recent screenshot of the desktop."
         )
 
