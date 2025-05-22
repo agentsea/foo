@@ -625,7 +625,7 @@ class Foo(TaskAgent):
             # Post a message to the default thread to let the user know the task is in progress
             task.post_message(
                 "assistant",
-                "I'm a new agent. My last update was 2025-05-22, around noon EET.",
+                "I'm a new agent. My last update was 2025-05-22, around 3pm EET.",
             )
             task.post_message("assistant", f"Starting task '{task.description}'")
 
