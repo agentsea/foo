@@ -159,6 +159,11 @@ def translate_ad_action_to_qwen_action_dict(action: V1Action) -> dict[str, Any]:
             "name": "computer_use",
             "arguments": {"action": "key", "keys": parameters["keys"]},
         }
+    elif name == "press_key":
+        return {
+            "name": "computer_use",
+            "arguments": {"action": "key", "keys": [parameters["key"]]},
+        }
     elif name == "type_text":
         return {
             "name": "computer_use",
