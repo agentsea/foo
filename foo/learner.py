@@ -11,7 +11,7 @@ from taskara import Task
 from taskara.server.models import V1TaskUpdate
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from foo.agent import Foo as Agent
+from foo.agent_genx import Agent
 
 DEBUG_ENV_VAR = os.getenv("DEBUG", "false").lower() == "true"
 log_level = logging.DEBUG if DEBUG_ENV_VAR else logging.INFO
