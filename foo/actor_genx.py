@@ -70,7 +70,8 @@ class Actor:
 
     def __init__(self, adapter_name: str, api_key: str, user_key: Optional[str] = None):
         from orign import Adapter
-        from orign.zoo.processors.qwen_server import QwenVLServer
+
+        from .qwen_server import QwenVLServer
 
         if not os.getenv("HUGGINGFACE_HUB_TOKEN"):
             raise ValueError("HUGGINGFACE_HUB_TOKEN not set")

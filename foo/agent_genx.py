@@ -76,7 +76,8 @@ class Foo(TaskAgent):
         print("\nlearning task: ", task.id, flush=True)
         print("with user: ", user.model_dump(), flush=True)
         from nebu import Namespace
-        from orign.zoo.processors.unsloth_trainer import TrainingRequest, UnslothSFT
+
+        from .unsloth_trainer import TrainingRequest, UnslothSFT
 
         if not task.remote or not task.auth_token:
             raise ValueError("Task remote or token not set")
