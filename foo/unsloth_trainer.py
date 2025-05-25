@@ -919,7 +919,7 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
 def UnslothSFT(
     platform: str = "runpod",
     accelerators: List[str] = ["1:H100_SXM"],
-    image: str = "us-docker.pkg.dev/agentsea-dev/orign/unsloth-train:latest",  # "runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04",  # "pytorch/pytorch:2.7.0-cuda12.8-cudnn9-devel" "pytorch/pytorch:2.6.0-cuda12.6-cudnn9-devel",
+    image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-trainer:c9acf49",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-train:latest",  # "runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04",  # "pytorch/pytorch:2.7.0-cuda12.8-cudnn9-devel" "pytorch/pytorch:2.6.0-cuda12.6-cudnn9-devel",
     scale: V1Scale = scale,
     namespace: Optional[str] = None,
     env: Optional[List[V1EnvVar]] = None,

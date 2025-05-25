@@ -339,7 +339,7 @@ def QwenVLServer(
     platform: str = "runpod",
     accelerators: List[str] = ["1:A100_SXM"],
     model: str = "unsloth/Qwen2.5-VL-32B-Instruct",
-    image: str = "us-docker.pkg.dev/agentsea-dev/orign/unsloth-infer:latest",  # "pytorch/pytorch:2.6.0-cuda12.6-cudnn9-devel",
+    image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-server:c9acf49",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-infer:latest",  # "pytorch/pytorch:2.6.0-cuda12.6-cudnn9-devel",
     namespace: Optional[str] = None,
     env: Optional[List[V1EnvVar]] = None,
     config: Optional[NebuGlobalConfig] = None,
