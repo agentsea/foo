@@ -928,7 +928,7 @@ requires-dist = [
     { name = "fastapi", extras = ["all"], specifier = ">=0.109" },
     { name = "json-repair", specifier = ">=0.30.2" },
     { name = "openai", specifier = ">=1.59.3" },
-    { name = "orign", specifier = "==0.2.108" },
+    { name = "orign", specifier = "==0.2.109" },
     { name = "pydantic", specifier = ">=2.6.3" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "sqlalchemy", specifier = ">=2.0.27" },
@@ -1892,7 +1892,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/40/09/560ba71405cdf8359
 
 [[package]]
 name = "nebu"
-version = "0.1.104"
+version = "0.1.105"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -1907,9 +1907,9 @@ dependencies = [
     { name = "redis" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b4/f3/faa8c9476070e27be46f81aabc323ca114fc519b9c837ed235da5ae852b3/nebu-0.1.104.tar.gz", hash = "sha256:a6c7ab8eb63038638d06733c32378b61e4268a2511dc1da259f972c59cd32fa4", size = 68303 }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/bd/d6a7807fccba5fcd649bc3135b8d984ff7ad0882b61b883fc2f7528b18e2/nebu-0.1.105.tar.gz", hash = "sha256:2e736853273551d40196d40b5e16555f682a2a4d62433df1ccab628375a7ca54", size = 68506 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/63/cc/3febc3ef5205b53b71d064f7e4051637ccd69ef0f59e7a00e996c3029712/nebu-0.1.104-py3-none-any.whl", hash = "sha256:5ad0cbe2274167a207ebd67f7c588dd578959ece7c16b59342ca4b5496f66f21", size = 73124 },
+    { url = "https://files.pythonhosted.org/packages/5c/92/ddd4c1a294496782d04b1ec2d6df80354e0c5f3c1f9c8fa964f469c09526/nebu-0.1.105-py3-none-any.whl", hash = "sha256:2e7e0b75b503833ef38501d529cdbadfc04e1bc5362b4e9035f0812adb7651c7", size = 73351 },
 ]
 
 [[package]]
@@ -1998,7 +1998,7 @@ wheels = [
 
 [[package]]
 name = "orign"
-version = "0.2.108"
+version = "0.2.109"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chatmux" },
@@ -2011,9 +2011,9 @@ dependencies = [
     { name = "rclone-python" },
     { name = "shortuuid" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f8/03/3f82a802fc1d42b71c7e4ee3264139272d5b94e8b4ad5f411dbb5c322b28/orign-0.2.108.tar.gz", hash = "sha256:52ec01902e8f1c012d95145fd30c96a83124e83338f4027b299d945482ce0628", size = 48575 }
+sdist = { url = "https://files.pythonhosted.org/packages/47/60/249e79fd7e9abe949f18ca800cec859fd6246e17d7b30318a1bbfbc482a0/orign-0.2.109.tar.gz", hash = "sha256:0d702655320c7c64020478baf905ba19a0524eed40a9551b10beb1e3cd04306b", size = 48571 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f5/a5/7743570f1adb5dc1412859d9c06fb75592f5ee74b2cdb3627e1f43e188a9/orign-0.2.108-py3-none-any.whl", hash = "sha256:08e56caa1b405fa52e01acc84c52cfb36cf3372a8d8cc54beecc71c7e1e6ff3c", size = 57795 },
+    { url = "https://files.pythonhosted.org/packages/04/c9/6255f2085933a02e1f9b6f0a269a6093663656d6a29fb880bdbdcd7567cf/orign-0.2.109-py3-none-any.whl", hash = "sha256:6f695b5aa327515b6efd0f1220c78610cb0182c77919c1b2bfca7eab938f5c1d", size = 57795 },
 ]
 
 [[package]]
