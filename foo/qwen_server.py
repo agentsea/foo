@@ -91,6 +91,179 @@ def init():
     )
 
 
+def smart_adapter_loading_for_inference(
+    model: Any,
+    adapter_to_load: Any,
+    adapter_name: str,
+    bucket: Any,
+    loaded_adapters_list: List[Any],
+) -> bool:
+    """
+    Smart adapter loading for inference that:
+    1. Uses set_adapter() for fast switching to already-loaded adapters
+    2. Uses hotswap_adapter() when updating existing adapters with new weights
+    3. Uses traditional loading only for completely new adapters
+
+    Returns True if adapter was loaded/updated, False if no action needed
+    """
+    from peft.utils.hotswap import hotswap_adapter  # type: ignore
+
+    print(f"\n[Smart Inference] Managing adapter: '{adapter_name}'")
+
+    # Check current state
+    adapter_already_loaded = (
+        adapter_name in model.peft_config if hasattr(model, "peft_config") else False
+    )
+
+    # Find if we have this adapter tracked
+    existing_adapter_info = None
+    existing_adapter_index = -1
+
+    for idx, loaded_adapter in enumerate(loaded_adapters_list):
+        if (
+            loaded_adapter.metadata.name == adapter_to_load.metadata.name
+            and loaded_adapter.metadata.namespace == adapter_to_load.metadata.namespace
+        ):
+            existing_adapter_info = loaded_adapter
+            existing_adapter_index = idx
+            break
+
+    print(
+        f"[Smart Inference] Adapter '{adapter_name}' already loaded: {adapter_already_loaded}"
+    )
+    print(f"[Smart Inference] Have tracked info: {existing_adapter_info is not None}")
+
+    if existing_adapter_info:
+        if (
+            existing_adapter_info.metadata.updated_at
+            == adapter_to_load.metadata.updated_at
+        ):
+            # CASE 1: Exact same version already loaded - just switch to it (fastest!)
+            print(
+                "[Smart Inference] FAST SWITCH: Exact version already loaded, using set_adapter()"
+            )
+            model.set_adapter(adapter_name)
+            return False  # No loading needed
+
+        elif adapter_already_loaded:
+            # CASE 2: Different version loaded - try hotswapping
+            print(
+                f"[Smart Inference] HOTSWAPPING: Updating '{adapter_name}' with newer weights"
+            )
+            print(f"  Current: updated_at={existing_adapter_info.metadata.updated_at}")
+            print(f"  New: updated_at={adapter_to_load.metadata.updated_at}")
+
+            try:
+                # Download new weights to temporary location
+                temp_adapter_path = f"./adapters/{adapter_name}_temp"
+                print(
+                    f"[Smart Inference] Downloading new weights to {temp_adapter_path}"
+                )
+
+                time_start_copy = time.time()
+                bucket.copy(adapter_to_load.model_uri, temp_adapter_path)
+                print(
+                    f"[Smart Inference] Downloaded in {time.time() - time_start_copy} seconds"
+                )
+
+                # Use hotswap to update the existing adapter
+                time_start_hotswap = time.time()
+
+                # Hotswap requires an active adapter to replace
+                if model.active_adapter != adapter_name:
+                    print(
+                        f"[Smart Inference] Setting adapter '{adapter_name}' as active before hotswap"
+                    )
+                    model.set_adapter(adapter_name)
+                    print(
+                        f"[Smart Inference] Active adapter now: {model.active_adapters}"
+                    )
+
+                hotswap_adapter(
+                    model,
+                    temp_adapter_path,
+                    adapter_name=adapter_name,
+                    torch_device="cuda",
+                )
+                print(
+                    f"[Smart Inference] Hotswapped in {time.time() - time_start_hotswap} seconds"
+                )
+
+                # Update our tracking info
+                loaded_adapters_list[existing_adapter_index] = adapter_to_load
+                print(
+                    f"[Smart Inference] Successfully hotswapped adapter '{adapter_name}'"
+                )
+
+                # Clean up temp files
+                import shutil
+
+                shutil.rmtree(temp_adapter_path, ignore_errors=True)
+
+                return True
+
+            except Exception as e:
+                print(
+                    f"[Smart Inference] Hotswap failed: {e}, falling back to traditional reload"
+                )
+                # Fallback: delete and reload traditionally
+                try:
+                    model.delete_adapter(adapter_name)
+                    del loaded_adapters_list[existing_adapter_index]
+                except:
+                    pass  # Best effort cleanup
+                return _load_adapter_traditionally(
+                    model, adapter_to_load, adapter_name, bucket, loaded_adapters_list
+                )
+        else:
+            # CASE 3: We have tracking info but adapter not actually loaded - load it
+            print(
+                "[Smart Inference] RELOAD: Adapter info exists but not loaded, loading traditionally"
+            )
+            return _load_adapter_traditionally(
+                model, adapter_to_load, adapter_name, bucket, loaded_adapters_list
+            )
+    else:
+        # CASE 4: Completely new adapter - load traditionally
+        print(f"[Smart Inference] NEW ADAPTER: Loading '{adapter_name}' traditionally")
+        return _load_adapter_traditionally(
+            model, adapter_to_load, adapter_name, bucket, loaded_adapters_list
+        )
+
+
+def _load_adapter_traditionally(
+    model: Any,
+    adapter_to_load: Any,
+    adapter_name: str,
+    bucket: Any,
+    loaded_adapters_list: List[Any],
+) -> bool:
+    """Traditional adapter loading for new adapters"""
+    print(f"[Traditional Inference] Loading new adapter '{adapter_name}'")
+
+    # Download adapter
+    adapter_path = f"./adapters/{adapter_name}"
+    print(f"[Traditional Inference] Downloading to {adapter_path}")
+
+    time_start_copy = time.time()
+    bucket.copy(adapter_to_load.model_uri, adapter_path)
+    print(
+        f"[Traditional Inference] Downloaded in {time.time() - time_start_copy} seconds"
+    )
+
+    # Load adapter
+    print(f"[Traditional Inference] Loading adapter '{adapter_name}'")
+    time_start_load = time.time()
+    model.load_adapter(adapter_path, adapter_name=adapter_name)
+    print(f"[Traditional Inference] Loaded in {time.time() - time_start_load} seconds")
+
+    # Track the adapter
+    loaded_adapters_list.append(adapter_to_load)
+    print(f"[Traditional Inference] Successfully loaded adapter '{adapter_name}'")
+
+    return True
+
+
 def infer_qwen_vl(
     message: Message[ChatRequest],
 ) -> ChatResponse:
@@ -144,94 +317,17 @@ def infer_qwen_vl(
                     "The base model of the adapter does not match the model you are trying to use"
                 )
 
-            # Check if the correct version of the adapter is already loaded
-            needs_loading = True
-            existing_adapter_to_unload = None
-            existing_adapter_index = -1
-
-            for idx, loaded_adapter in enumerate(state.adapters):
-                print("checking against cached adapter: ", loaded_adapter)
-                if (
-                    loaded_adapter.metadata.name == adapter_to_load.metadata.name
-                    and loaded_adapter.metadata.namespace
-                    == adapter_to_load.metadata.namespace
-                ):
-                    if (
-                        loaded_adapter.metadata.updated_at
-                        == adapter_to_load.metadata.updated_at
-                    ):
-                        # Correct version already loaded
-                        print(
-                            f"Adapter version {content.model} (updated_at: {adapter_to_load.metadata.updated_at}) already loaded."
-                        )
-                        needs_loading = False
-                        break
-                    else:
-                        # Different version loaded, mark for unloading
-                        print(
-                            f"Found different version of adapter {content.model}. Current: updated_at={loaded_adapter.metadata.updated_at}, Requested: updated_at={adapter_to_load.metadata.updated_at}"
-                        )
-                        existing_adapter_to_unload = loaded_adapter
-                        existing_adapter_index = idx
-                        break  # Stop checking, we found the one to replace
-
-            print(
-                f"Adapter hot start check took: {time.time() - adapter_hot_start} seconds"
+            # Use smart adapter management instead of manual delete/reload logic
+            bucket = Bucket()
+            adapter_was_loaded = smart_adapter_loading_for_inference(
+                state.base_model, adapter_to_load, content.model, bucket, state.adapters
             )
 
-            if needs_loading:
-                # Unload existing adapter if a different version was found
-                if existing_adapter_to_unload:
-                    try:
-                        print(
-                            f"Unloading existing adapter: {existing_adapter_to_unload.metadata.name} (updated_at: {existing_adapter_to_unload.metadata.updated_at})"
-                        )
-
-                        try:
-                            print("peft_config: ", state.base_model.peft_config.keys())
-                            # Use delete_adapter to remove it from the base model's peft config
-                            state.base_model.delete_adapter(content.model)
-                        except Exception as e:
-                            print(
-                                f"Failed to delete adapter {existing_adapter_to_unload.metadata.name}: {e}"
-                            )
-                        # Remove from our tracked list
-                        del state.adapters[existing_adapter_index]
-                        print(
-                            f"Successfully unloaded adapter {existing_adapter_to_unload.metadata.name}"
-                        )
-                        # Optional: Clean up local files for the old adapter version?
-                        # shutil.rmtree(f"./adapters/{content.model}", ignore_errors=True) # Requires import shutil
-                    except Exception as e:
-                        print(
-                            f"Failed to unload existing adapter {existing_adapter_to_unload.metadata.name}: {e}"
-                        )
-                        # If unloading fails, we cannot proceed with loading the new one under the same name.
-                        raise ValueError(
-                            f"Failed to unload existing adapter '{existing_adapter_to_unload.metadata.name}' to load the new version."
-                        ) from e
-
-                # Download and load the new adapter
-                bucket = Bucket()
-                adapter_path = f"./adapters/{content.model}"  # content.model is the adapter name like 'namespace/name'
-                print("copying adapter", adapter_to_load.model_uri, adapter_path)
-
-                time_start_copy = time.time()
-                bucket.copy(adapter_to_load.model_uri, adapter_path)
-                print(f"Copied in {time.time() - time_start_copy} seconds")
-
-                print("loading adapter", content.model)
-                time_start_load_adapter = time.time()
-                state.base_model.load_adapter(
-                    adapter_path,
-                    adapter_name=content.model,
-                    # low_cpu_mem_usage=False, # Keep this if needed, or set based on requirements
-                )
-                state.adapters.append(
-                    adapter_to_load
-                )  # Add the newly loaded adapter info
+            if adapter_was_loaded:
+                print(f"Adapter {content.model} loaded/updated successfully")
+            else:
                 print(
-                    f"Loaded adapter {content.model} in {time.time() - time_start_load_adapter} seconds"
+                    f"Adapter {content.model} was already current - used fast switching"
                 )
 
         else:
@@ -244,29 +340,119 @@ def infer_qwen_vl(
         loaded_adapter_names = list(state.base_model.peft_config.keys())
     print("loaded_adapter_names: ", loaded_adapter_names)
 
+    # Adapter status logging
+    print(f"Model to use: {content.model}, Intended load_adapter: {load_adapter}")
+    active_before_manipulation = "N/A"
+    try:
+        # PeftModel.active_adapters is a property that returns a list
+        active_before_manipulation = state.base_model.active_adapters
+    except AttributeError:
+        # Fallback for older PEFT or if it's just active_adapter (singular string)
+        try:
+            active_before_manipulation = state.base_model.active_adapter
+        except AttributeError:
+            pass
+    except Exception as e_active:
+        print(f"Note: Could not get active_adapters before manipulation: {e_active}")
+        pass  # Potentially no adapters loaded yet or unexpected structure
+    print(
+        f"Active adapter(s) before explicit manipulation: {active_before_manipulation}"
+    )
+
     if load_adapter:
-        # Check if the adapter we intend to use is actually in the loaded adapters list now
-        if content.model not in loaded_adapter_names:
-            # This case might happen if loading failed silently, or logic error
+        # Goal: Ensure ONLY content.model is active and enabled.
+        target_adapter_name = content.model
+        print(f"[AdapterCycle] Attempting to activate adapter: {target_adapter_name}")
+
+        # 1. Ensure the target adapter is known to the model
+        if target_adapter_name not in loaded_adapter_names:
+            # This implies smart_adapter_loading_for_inference failed or was skipped, which shouldn't happen if we reached here with load_adapter=True
             raise RuntimeError(
-                f"Adapter {content.model} was requested but is not loaded in the model."
+                f"Adapter {target_adapter_name} was requested but is not in model.peft_config. Keys: {loaded_adapter_names}"
             )
 
-        print("setting adapter", content.model)
-        state.base_model.set_adapter(content.model)
-    else:
-        # Ensure no adapter is active if load_adapter is False
-        print("disabling adapter")
-        try:
-            if hasattr(state.base_model, "disable_adapter"):
-                print("Disabling any active adapter.")
-                state.base_model.disable_adapter()
-        except Exception as e:
-            # May fail if no adapter was ever loaded or already disabled
-            print(f"Failed to disable adapter (might be expected): {e}")
+        # 2. Disable all other adapters first (if possible and makes sense for Unsloth)
+        # For PEFT, set_adapter typically handles this by making only the specified one active.
+        # However, an explicit disable_adapters() might ensure a cleaner state for Unsloth.
+        if hasattr(state.base_model, "disable_adapters"):
+            print("[AdapterCycle] Calling disable_adapters() first for a clean slate.")
+            state.base_model.disable_adapters()
 
-    print("setting model for inference")
+        # 3. Set the desired adapter as active
+        print(f"[AdapterCycle] Calling set_adapter('{target_adapter_name}')")
+        state.base_model.set_adapter(target_adapter_name)
+
+        # 4. Explicitly enable adapters (Unsloth-specific step, if necessary)
+        # Standard PEFT's set_adapter already calls enable_adapter_layers.
+        # This is more of a "belt and braces" for Unsloth.
+        if hasattr(state.base_model, "enable_adapters"):
+            print("[AdapterCycle] Calling enable_adapters() to ensure PEFT is active.")
+            state.base_model.enable_adapters()
+    else:
+        # Goal: Ensure NO adapters are active for base model inference.
+        print("[AdapterCycle] Deactivating all adapters for base model operation.")
+        # Only attempt to disable/manipulate adapters if some have been loaded.
+        adapters_present_in_config = False
+        if hasattr(state.base_model, "peft_config") and state.base_model.peft_config:
+            adapters_present_in_config = True
+            print(
+                f"[AdapterCycle] Adapters are present in peft_config: {list(state.base_model.peft_config.keys())}"
+            )
+
+        if adapters_present_in_config:
+            if hasattr(state.base_model, "disable_adapters"):
+                print("[AdapterCycle] Calling disable_adapters().")
+                state.base_model.disable_adapters()
+            elif hasattr(state.base_model, "set_adapter"):  # Robust PEFT way
+                print("[AdapterCycle] Calling set_adapter([]).")
+                state.base_model.set_adapter([])
+            elif hasattr(state.base_model, "active_adapter"):  # Fallback
+                print("[AdapterCycle] Setting active_adapter = None.")
+                state.base_model.active_adapter = None
+            else:
+                print(
+                    "[AdapterCycle] Warning: No standard method found to disable adapters, though adapters were present in config."
+                )
+        else:
+            print(
+                "[AdapterCycle] No adapters found in peft_config. Assuming base model is already effectively active. Skipping disable/set_adapter calls."
+            )
+
+    active_after_manipulation = "N/A"
+    try:
+        active_after_manipulation = state.base_model.active_adapters
+    except AttributeError:
+        try:
+            active_after_manipulation = state.base_model.active_adapter
+        except AttributeError:
+            pass
+    except Exception as e_active_after:
+        print(
+            f"Note: Could not get active_adapters after manipulation: {e_active_after}"
+        )
+        pass
+    print(f"Active adapter(s) after explicit manipulation: {active_after_manipulation}")
+
+    print("setting model for inference")  # This is a logging print statement
     FastVisionModel.for_inference(state.base_model)
+
+    # Log active adapter state *after* for_inference as well, for debugging
+    active_after_for_inference = "N/A"
+    try:
+        active_after_for_inference = state.base_model.active_adapters
+    except AttributeError:
+        try:
+            active_after_for_inference = state.base_model.active_adapter
+        except AttributeError:
+            pass
+    except Exception as e_active_final:
+        print(
+            f"Note: Could not get active_adapters after for_inference: {e_active_final}"
+        )
+        pass
+    print(
+        f"Active adapter(s) after FastVisionModel.for_inference(): {active_after_for_inference}"
+    )
 
     content_dict = content.model_dump()
     messages_oai = content_dict["messages"]
@@ -339,7 +525,7 @@ def QwenVLServer(
     platform: str = "runpod",
     accelerators: List[str] = ["1:A100_SXM"],
     model: str = "unsloth/Qwen2.5-VL-32B-Instruct",
-    image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-server:d9fcc05",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-infer:latest"
+    image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-server:324d8c6",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-infer:latest"
     namespace: Optional[str] = None,
     env: Optional[List[V1EnvVar]] = None,
     config: Optional[NebuGlobalConfig] = None,
@@ -347,6 +533,8 @@ def QwenVLServer(
     debug: bool = False,
     min_replicas: int = 1,
     max_replicas: int = 4,
+    name: Optional[str] = None,
+    wait_for_healthy: bool = True,
 ) -> Processor[ChatRequest, ChatResponse]:
     if env:
         env.append(V1EnvVar(key="BASE_MODEL_ID", value=model))
@@ -367,5 +555,7 @@ def QwenVLServer(
         debug=debug,
         min_replicas=min_replicas,
         max_replicas=max_replicas,
+        name=name,
+        wait_for_healthy=wait_for_healthy,
     )
     return decorate(infer_qwen_vl)

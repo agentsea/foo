@@ -19,6 +19,7 @@ from orign import V1TrainingStatus, find_latest_checkpoint
 from pydantic import BaseModel
 
 BASE_MODEL_ID = "unsloth/Qwen2.5-VL-32B-Instruct"
+ADAPTER_DIR = "/nebu/cache/adapters"
 
 
 class TrainingRequest(BaseModel):
@@ -57,9 +58,6 @@ scale = V1Scale(
     zero=V1ScaleZero(duration="10m"),
 )
 
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
-# pip uninstall -y xformers
-# pip install -U xformers --index-url https://download.pytorch.org/whl/cu126
 setup_script = """
 apt update
 apt install -y git
@@ -70,11 +68,6 @@ pip install unsloth
 pip install -e git+https://github.com/pbarker/unsloth-zoo.git#egg=unsloth_zoo
 pip install huggingface_hub[hf_xet]
 """
-# pip install -e git+https://github.com/pbarker/unsloth.git#egg=unsloth
-
-
-ADAPTER_DIR = "/nebu/cache/adapters"
-os.makedirs(ADAPTER_DIR, exist_ok=True)
 
 
 def init():
@@ -84,7 +77,7 @@ def init():
     import torch  # type: ignore  # type: ignore
     from nebu import Cache  # type: ignore
     from orign import V1Adapter
-    from peft import LoraConfig, PeftModel  # type: ignore
+    from peft import LoraConfig, PeftModel  # type: ignore  # noqa: F401
     from unsloth_zoo.peft_utils import get_peft_regex  # type: ignore
 
     if "state" in globals():  # <-- already loaded by an earlier worker
@@ -93,6 +86,8 @@ def init():
 
     gc.collect()
     torch.cuda.empty_cache()  # os.environ.setdefault("MAX_PIXELS", "100352")
+
+    os.makedirs(ADAPTER_DIR, exist_ok=True)
 
     @dataclass
     class TrainingState:
@@ -136,6 +131,7 @@ def init():
             "Captured initial target_modules pattern from 'default' adapter's config."
         )
 
+        # Delete the default adapter since we'll manage our own adapters
         print("Deleting 'default' adapter created by get_peft_model.")
         plumbed_model.delete_adapter("default")
     else:
@@ -175,129 +171,268 @@ def add_or_load_adapter_for_model(
     model: "PeftModel",  # type: ignore # noqa: F821
     adapter_name: str,
     resume_training: bool,
-):
-    from peft import LoraConfig, PeftModel  # type: ignore
+) -> str:
+    """
+    Smart adapter management that:
+    1. Uses set_adapter() for fast switching to already-loaded adapters
+    2. Uses traditional add_adapter() for new adapters
+    3. Uses hotswap_adapter() only when updating existing adapters with new weights
+    """
+    from peft import LoraConfig  # type: ignore  # noqa: F401
+
+    # Check hotswap availability with detailed debugging
+    hotswap_available = False
+    hotswap_adapter = None
+    try:
+        from peft.utils.hotswap import hotswap_adapter  # type: ignore
+
+        hotswap_available = True
+        print(
+            f"[Smart Adapter] hotswap_adapter successfully imported: {hotswap_adapter}"
+        )
+    except ImportError as e:
+        print(f"[Smart Adapter] hotswap_adapter import failed: {e}")
+    except Exception as e:
+        print(
+            f"[Smart Adapter] Unexpected error importing hotswap_adapter: {type(e).__name__}: {e}"
+        )
+
+    print(f"[Smart Adapter] Hotswap functionality available: {hotswap_available}")
 
     global G_INITIAL_TARGET_MODULES_PATTERN
     print(
-        f"\n[Adapter Management] Called for adapter: '{adapter_name}', resume: {resume_training}"
+        f"\n[Smart Adapter] Managing adapter: '{adapter_name}', resume: {resume_training}"
     )
 
-    # This is the base folder for the adapter (e.g., ./adapters/adapter_A)
     adapter_base_folder = os.path.join(ADAPTER_DIR, adapter_name)
-    os.makedirs(adapter_base_folder, exist_ok=True)  # Ensure base folder exists
-
-    # Based on logs (ls adapters/adapter_A/adapter_A/), PEFT saves into a nested subdirectory
-    # if save_pretrained is called with a path like "./adapters/adapter_A" and adapter name "adapter_A".
-    # So, the actual files (adapter_config.json, etc.) are expected in this nested path.
+    os.makedirs(adapter_base_folder, exist_ok=True)
     path_containing_adapter_files = os.path.join(adapter_base_folder, adapter_name)
 
-    if adapter_name not in model.peft_config:
+    # Check if adapter is already loaded
+    adapter_already_loaded = adapter_name in model.peft_config
+    has_saved_weights = os.path.isdir(path_containing_adapter_files) and os.listdir(
+        path_containing_adapter_files
+    )
+
+    print(
+        f"[Smart Adapter] Adapter '{adapter_name}' already loaded: {adapter_already_loaded}"
+    )
+    print(f"[Smart Adapter] Has saved weights: {has_saved_weights}")
+
+    # Add more detailed state debugging
+    if adapter_already_loaded:
         print(
-            f"[Adapter Management] Adapter '{adapter_name}' not found in peft_config. Adding new adapter configuration."
+            f"[Smart Adapter] Current adapter config for '{adapter_name}': {model.peft_config[adapter_name]}"
+        )
+        if hasattr(model.peft_config[adapter_name], "target_modules"):
+            print(
+                f"[Smart Adapter] Target modules: {model.peft_config[adapter_name].target_modules}"
+            )
+
+    if has_saved_weights:
+        print(
+            f"[Smart Adapter] Saved weight files: {os.listdir(path_containing_adapter_files)}"
+        )
+        # Check if required files exist
+        config_file = os.path.join(path_containing_adapter_files, "adapter_config.json")
+        weights_file = os.path.join(
+            path_containing_adapter_files, "adapter_model.safetensors"
+        )
+        print(f"[Smart Adapter] Config file exists: {os.path.exists(config_file)}")
+        print(f"[Smart Adapter] Weights file exists: {os.path.exists(weights_file)}")
+
+        if os.path.exists(config_file):
+            try:
+                import json
+
+                with open(config_file, "r") as f:
+                    config_data = json.load(f)
+                print(
+                    f"[Smart Adapter] Saved config target_modules: {config_data.get('target_modules', 'not found')}"
+                )
+                print(
+                    f"[Smart Adapter] Saved config r: {config_data.get('r', 'not found')}"
+                )
+                print(
+                    f"[Smart Adapter] Saved config lora_alpha: {config_data.get('lora_alpha', 'not found')}"
+                )
+            except Exception as e:
+                print(f"[Smart Adapter] Failed to read config file: {e}")
+
+    print(f"[Smart Adapter] Resume training flag: {resume_training}")
+    print(f"[Smart Adapter] Model class: {model.__class__.__name__}")
+    print(f"[Smart Adapter] Model device: {getattr(model, 'device', 'no device attr')}")
+
+    if adapter_already_loaded and has_saved_weights and resume_training:
+        # CASE 1: Adapter is loaded but we have newer weights to hotswap in
+        print(
+            f"[Smart Adapter] HOTSWAPPING: Updating existing adapter '{adapter_name}' with new weights"
+        )
+        print(f"[Smart Adapter] Hotswap source path: {path_containing_adapter_files}")
+        print(f"[Smart Adapter] Hotswap target adapter: {adapter_name}")
+        print(f"[Smart Adapter] Model device: {getattr(model, 'device', 'unknown')}")
+        print(f"[Smart Adapter] Model type: {type(model)}")
+        print(
+            f"[Smart Adapter] Available files at source: {os.listdir(path_containing_adapter_files) if os.path.exists(path_containing_adapter_files) else 'path does not exist'}"
         )
 
-        new_lora_config = LoraConfig(
-            r=64,
-            lora_alpha=128,
-            lora_dropout=1e-3,
-            bias="none",
-            target_modules=G_INITIAL_TARGET_MODULES_PATTERN,
-        )
-        try:
-            model.add_adapter(adapter_name=adapter_name, peft_config=new_lora_config)
+        if not hotswap_available or hotswap_adapter is None:
             print(
-                f"[Adapter Management] Adapter '{adapter_name}' added with new config."
+                "[Smart Adapter] Hotswap not available, falling back to traditional reload"
+            )
+            model.delete_adapter(adapter_name)
+            return add_adapter_traditionally(
+                model, adapter_name, resume_training, path_containing_adapter_files
+            )
+
+        try:
+            # Add more detailed debugging before hotswap
+            print(
+                f"[Smart Adapter] Current adapter configs: {list(model.peft_config.keys())}"
+            )
+            print(f"[Smart Adapter] Current active adapters: {model.active_adapters}")
+
+            # Hotswap requires an active adapter to replace
+            if model.active_adapter != adapter_name:
+                print(
+                    f"[Smart Adapter] Setting adapter '{adapter_name}' as active before hotswap"
+                )
+                model.set_adapter(adapter_name)
+                print(f"[Smart Adapter] Active adapter now: {model.active_adapters}")
+
+            hotswap_start_time = time.time()
+            hotswap_adapter(
+                model,
+                path_containing_adapter_files,
+                adapter_name=adapter_name,
+                torch_device="cuda" if hasattr(model, "device") else None,
+            )
+            hotswap_end_time = time.time()
+            print(
+                f"[Smart Adapter] Hotswap time taken: {hotswap_end_time - hotswap_start_time} seconds"
+            )
+            print(
+                f"[Smart Adapter] Successfully hotswapped new weights into '{adapter_name}'"
             )
         except Exception as e:
             print(
-                f"[Adapter Management] Error during model.add_adapter for '{adapter_name}': {e}"
+                f"[Smart Adapter] Hotswap failed with detailed error: {type(e).__name__}: {str(e)}"
             )
-            raise
-    else:
+            print("[Smart Adapter] Exception traceback:")
+            import traceback
+
+            traceback.print_exc()
+            print(
+                "[Smart Adapter] Falling back to traditional reload due to hotswap failure"
+            )
+            # Fallback: delete and reload traditionally
+            model.delete_adapter(adapter_name)
+            return add_adapter_traditionally(
+                model, adapter_name, resume_training, path_containing_adapter_files
+            )
+
+    elif adapter_already_loaded:
+        # CASE 2: Adapter is already loaded, just switch to it (fastest!)
         print(
-            f"[Adapter Management] Adapter '{adapter_name}' already exists in peft_config."
+            f"[Smart Adapter] FAST SWITCH: Adapter '{adapter_name}' already loaded, using set_adapter()"
         )
 
-    if resume_training:
-        print(
-            f"[Adapter Management] Attempting to load weights for adapter '{adapter_name}'."
+    else:
+        # CASE 3: New adapter, load it traditionally
+        print(f"[Smart Adapter] NEW ADAPTER: Loading '{adapter_name}' traditionally")
+        return add_adapter_traditionally(
+            model, adapter_name, resume_training, path_containing_adapter_files
         )
+
+    # Set the adapter as active
+    model.set_adapter(adapter_name)
+    print(f"[Smart Adapter] Active adapter set to: '{model.active_adapters}'")
+    return adapter_base_folder
+
+
+def add_adapter_traditionally(
+    model: "PeftModel",  # type: ignore # noqa: F821
+    adapter_name: str,
+    resume_training: bool,
+    path_containing_adapter_files: str,
+) -> str:
+    """Traditional adapter loading for new adapters"""
+    from peft import LoraConfig  # type: ignore
+
+    global G_INITIAL_TARGET_MODULES_PATTERN
+
+    print(f"[Traditional] Adding new adapter '{adapter_name}'")
+    new_lora_config = LoraConfig(
+        r=64,
+        lora_alpha=128,
+        lora_dropout=1e-3,
+        bias="none",
+        target_modules=G_INITIAL_TARGET_MODULES_PATTERN,
+    )
+
+    try:
+        model.add_adapter(adapter_name=adapter_name, peft_config=new_lora_config)
+        print(f"[Traditional] Added adapter '{adapter_name}' successfully")
+    except Exception as e:
+        print(f"[Traditional] Error adding adapter '{adapter_name}': {e}")
+        raise
+
+    # Load weights if resuming and they exist
+    if (
+        resume_training
+        and os.path.isdir(path_containing_adapter_files)
+        and os.listdir(path_containing_adapter_files)
+    ):
         print(
-            f"[Adapter Management] Expected adapter files location: {path_containing_adapter_files}"
+            f"[Traditional] Loading weights for '{adapter_name}' from {path_containing_adapter_files}"
         )
-        if os.path.isdir(path_containing_adapter_files):
-            print(
-                f"[Adapter Management] Contents of '{path_containing_adapter_files}': {os.listdir(path_containing_adapter_files)}"
+        try:
+            model.load_adapter(
+                path_containing_adapter_files, adapter_name, is_trainable=True
             )
-            try:
-                # Load from the path where adapter_config.json and weights are actually located
-                model.load_adapter(
-                    path_containing_adapter_files, adapter_name, is_trainable=True
-                )
-                print(
-                    f"[Adapter Management] Successfully loaded weights for adapter '{adapter_name}' from '{path_containing_adapter_files}'."
-                )
-            except Exception as e:
-                print(
-                    f"[Adapter Management] Error loading adapter weights for '{adapter_name}' from '{path_containing_adapter_files}': {e}"
-                )
-        else:
             print(
-                f"[Adapter Management] Path '{path_containing_adapter_files}' does not exist or is not a directory. Cannot load weights."
+                f"[Traditional] Successfully loaded weights for adapter '{adapter_name}'"
             )
+        except Exception as e:
+            print(f"[Traditional] Error loading weights: {e}")
 
     model.set_adapter(adapter_name)
-    print(f"[Adapter Management] Active adapter(s) set to: '{model.active_adapters}'")
-    # The folder returned is the base folder where the nested adapter specific folder is.
-    # For saving, we'll save to adapter_base_folder, and PEFT will create the nested structure if it does so.
-    return adapter_base_folder
+    return os.path.dirname(path_containing_adapter_files)
 
 
 def drop_adapter_from_model(model: "PeftModel", adapter_name_to_drop: str):  # type: ignore # noqa: F821
     import torch  # type: ignore
 
-    print(
-        f"\n[Adapter Management] Attempting to drop adapter: '{adapter_name_to_drop}'"
-    )
-    print(
-        f"[Adapter Management] Current peft_config keys before deleting: {list(model.peft_config.keys())}"
-    )
-    print(
-        f"[Adapter Management] Currently active adapters before deleting: {model.active_adapters}"
-    )
+    print(f"\n[Adapter Management] Request to drop adapter: '{adapter_name_to_drop}'")
 
+    # With smart management, we generally want to KEEP adapters loaded for fast switching
+    # Only drop if we're running out of memory or explicitly requested
+    print(
+        f"[Adapter Management] Currently loaded adapters: {list(model.peft_config.keys())}"
+    )
+    print(f"[Adapter Management] Currently active: {model.active_adapters}")
+
+    # For now, just deactivate the adapter but keep it loaded for fast switching later
     if adapter_name_to_drop in model.peft_config:
-        try:
-            print(
-                f"[Adapter Management] Calling model.delete_adapter('{adapter_name_to_drop}')..."
-            )
-            model.delete_adapter(adapter_name_to_drop)
-            print(
-                f"[Adapter Management] Adapter '{adapter_name_to_drop}' deleted successfully from peft_config."
-            )
-        except Exception as e:
-            print(
-                f"[Adapter Management] Error during model.delete_adapter('{adapter_name_to_drop}'): {e}"
-            )
+        print(
+            f"[Adapter Management] Keeping adapter '{adapter_name_to_drop}' loaded but deactivating"
+        )
+        model.active_adapter = None
+        print("[Adapter Management] Deactivated adapter - no active adapter")
     else:
         print(
-            f"[Adapter Management] Adapter '{adapter_name_to_drop}' not found in peft_config. Cannot delete."
+            f"[Adapter Management] Adapter '{adapter_name_to_drop}' not found in loaded adapters"
         )
 
-    if not model.active_adapters:
-        model.active_adapter = None
-        print(
-            "[Adapter Management] No active adapters remain. Set model.active_adapter to None."
-        )
-    else:
-        print(
-            f"[Adapter Management] Active adapters after drop attempt: {model.active_adapters}"
-        )
+    # Optional: Could add memory pressure detection and selective dropping here
+    # For example:
+    # if memory_pressure_detected():
+    #     print(f"[Adapter Management] Memory pressure detected, actually dropping '{adapter_name_to_drop}'")
+    #     model.delete_adapter(adapter_name_to_drop)
 
     torch.cuda.empty_cache()
     gc.collect()
-    print(f"[Adapter Management] Finished dropping adapter '{adapter_name_to_drop}'.\n")
+    print(f"[Adapter Management] Finished managing adapter '{adapter_name_to_drop}'.\n")
 
 
 def train_lora_adapter(
@@ -321,15 +456,24 @@ def train_lora_adapter(
         f"\n--- Starting train_lora_adapter for adapter: '{adapter_name_to_train}' (Epochs: {num_epochs}, Resume: {resume_from_saved_state}) ---"
     )
 
-    # add_or_load_adapter_for_model now returns the base save folder (e.g., ./adapters/adapter_A)
+    # Use smart adapter management
+    start_adapter_time = time.time()
     adapter_base_save_folder = add_or_load_adapter_for_model(
         state.base_model,
         adapter_name_to_train,
         resume_from_saved_state or bool(checkpoint_path),
     )
+    end_adapter_time = time.time()
+    print(
+        f"Time taken to load adapter: {end_adapter_time - start_adapter_time} seconds"
+    )
     print(
         f"Adapter base save folder for '{adapter_name_to_train}': {adapter_base_save_folder}"
     )
+
+    # The smart management ensures the correct adapter is active
+    print(f"Training will use adapter: '{adapter_name_to_train}'")
+    print(f"Currently active adapters: {state.base_model.active_adapters}")
 
     print("\nPreparing model for training with FastVisionModel.for_training...")
     model_ready_for_training = FastVisionModel.for_training(state.base_model)
@@ -467,15 +611,18 @@ def train_lora_adapter(
     trainer.train(resume_from_checkpoint=sft_trainer_resume_arg)
     print("SFTTrainer training finished.")
 
-    # Save adapter weights to the base folder. PEFT might create a nested folder.
-    # Example: if adapter_base_save_folder is "./adapters/adapter_A", PEFT saves to "./adapters/adapter_A/adapter_A/"
-    # This matches the loading logic.
+    # Save adapter weights - much simpler now that we train the actual adapter
     print(
         f"\nSaving adapter weights for '{adapter_name_to_train}' to base folder: {adapter_base_save_folder}"
     )
     model_ready_for_training.save_pretrained(adapter_base_save_folder)
     print("Adapter weights saved.")
 
+    # With smart management, we keep the adapter loaded for fast future access
+    print(
+        f"[Smart Management] Keeping adapter '{adapter_name_to_train}' loaded for fast future access"
+    )
+    # Just deactivate for now
     drop_adapter_from_model(state.base_model, adapter_name_to_train)
 
     del trainer, model_ready_for_training
@@ -600,6 +747,7 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
 
     failure = False
     try:
+        start_adapter_time = time.time()
         adapter_resource = None
         try:
             adapters_found = Adapter.get(
@@ -634,6 +782,8 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
             os.makedirs(
                 actual_local_adapter_files_path, exist_ok=True
             )  # Ensure target dir exists for sync
+
+            adapter_sync_start_time = time.time()
             try:
                 bucket.sync(adapter_weights_bucket_uri, actual_local_adapter_files_path)
                 print(f"Synced adapter weights to {actual_local_adapter_files_path}")
@@ -642,6 +792,10 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
                 print(
                     f"Warning: Failed to sync adapter weights from {adapter_weights_bucket_uri}: {e}. May proceed without them if adapter is being created fresh by train_lora_adapter."
                 )
+            adapter_sync_end_time = time.time()
+            print(
+                f"Time taken to sync adapter weights: {adapter_sync_end_time - adapter_sync_start_time} seconds"
+            )
 
             # Check if we have a specific checkpoint URI instead of a general SFT runs directory
             checkpoint_uri = adapter_resource.checkpoint_uri
@@ -661,7 +815,12 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
                     print(
                         f"Syncing specific checkpoint from {checkpoint_uri} to {local_checkpoint_dir}"
                     )
+                    sync_start_time = time.time()
                     bucket.sync(checkpoint_uri, local_checkpoint_dir)
+                    sync_end_time = time.time()
+                    print(
+                        f"Time taken to sync specific checkpoint: {sync_end_time - sync_start_time} seconds"
+                    )
                     print(f"Successfully synced checkpoint {checkpoint_name}")
                     sft_checkpoint_to_resume_from = local_checkpoint_dir
                     is_continue = True
@@ -704,6 +863,11 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
                 print(f"Cleaned up existing local SFT runs dir: {local_sft_runs_dir}")
             os.makedirs(local_adapter_weights_dir_for_current_adapter, exist_ok=True)
             os.makedirs(local_sft_runs_dir, exist_ok=True)
+
+        end_adapter_time = time.time()
+        print(
+            f"Time taken to download adapter: {end_adapter_time - start_adapter_time} seconds"
+        )
 
         print("Downloading dataset")
         time_start_download = time.time()
@@ -919,7 +1083,7 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
 def UnslothSFT(
     platform: str = "runpod",
     accelerators: List[str] = ["1:H100_SXM"],
-    image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-trainer:d9fcc05",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-train:latest"
+    image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-trainer:324d8c6",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-train:latest"
     scale: V1Scale = scale,
     namespace: Optional[str] = None,
     env: Optional[List[V1EnvVar]] = None,
@@ -928,6 +1092,8 @@ def UnslothSFT(
     debug: bool = False,
     min_replicas: int = 1,
     max_replicas: int = 4,
+    name: Optional[str] = None,
+    wait_for_healthy: bool = True,
 ) -> Processor[TrainingRequest, TrainingResponse]:
     decorate = processor(
         image=image,
@@ -944,5 +1110,7 @@ def UnslothSFT(
         debug=debug,
         min_replicas=min_replicas,
         max_replicas=max_replicas,
+        name=name,
+        wait_for_healthy=wait_for_healthy,
     )
     return decorate(train_unsloth_sft)
