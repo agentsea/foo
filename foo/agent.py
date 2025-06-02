@@ -224,9 +224,9 @@ class Foo(TaskAgent):
             console.print("approved: ", approved)
             console.print("action_correction: ", action_correction)
 
-            if not approved:
-                console.print("skipping not approved", style="white")
-                continue
+            # if not approved:
+            #     console.print("skipping not approved", style="white")
+            #     continue
 
             if "foo/train/status" in action.metadata:
                 console.print("skipping train", style="white")
