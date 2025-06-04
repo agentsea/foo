@@ -1,6 +1,10 @@
+import collections
+import fcntl  # Added for file locking
 import gc
+import json
 import os
 import secrets
+import shutil
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -20,6 +24,404 @@ from pydantic import BaseModel
 
 BASE_MODEL_ID = "unsloth/Qwen2.5-VL-32B-Instruct"
 ADAPTER_DIR = "/nebu/cache/adapters"
+MAX_LOADED_ADAPTERS = 8
+
+# --- LRU Disk Cache Management ---
+LRU_METADATA_FILE = "/nebu/cache/lru_disk_cache.json"
+ADAPTER_CACHE_DIR_BASE = ADAPTER_DIR
+SFT_RUNS_DIR_BASE = "./runs"  # Relative to CWD
+LRU_LOCK_FILE = "/nebu/cache/lru_disk_cache.lock"  # Lock file for metadata
+
+DEFAULT_MAX_ADAPTER_STORAGE_MB = 100 * 1024  # 100 GB
+DEFAULT_MAX_SFTRUN_STORAGE_MB = 100 * 1024  # 100 GB
+
+# Global variable to hold loaded metadata
+_lru_disk_metadata = {"adapters": [], "sft_runs": []}
+_lock_fd = None  # Global to hold lock file descriptor if needed, though prefer local
+
+
+def _acquire_lock(lock_file_path: str) -> Optional[int]:
+    lock_fd = os.open(lock_file_path, os.O_RDWR | os.O_CREAT | os.O_TRUNC)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        # print(f"Acquired lock on {lock_file_path}")
+        return lock_fd
+    except BlockingIOError:
+        # print(f"Could not acquire lock on {lock_file_path}, already locked.")
+        os.close(lock_fd)
+        return None
+
+
+def _release_lock(lock_fd: Optional[int]):
+    if lock_fd is not None:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        os.close(lock_fd)
+        # print("Released lock")
+
+
+def _get_dir_size_mb(path_str: str) -> float:
+    """Calculates the total size of a directory in megabytes."""
+    total_size_bytes = 0
+    if not os.path.exists(path_str):
+        return 0.0
+    for dirpath, _, filenames in os.walk(path_str):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            if not os.path.islink(fp):
+                try:
+                    total_size_bytes += os.path.getsize(fp)
+                except OSError:
+                    pass  # Ignore if file is removed during scan
+    return total_size_bytes / (1024 * 1024)
+
+
+def _load_lru_metadata():
+    """Loads LRU metadata from the JSON file, with file locking."""
+    global _lru_disk_metadata
+
+    lock_fd = _acquire_lock(LRU_LOCK_FILE)
+    if lock_fd is None:
+        print(
+            f"Warning: Could not acquire lock for loading {LRU_METADATA_FILE}. Using in-memory or potentially stale data."
+        )
+        # Decide on fallback: either use current _lru_disk_metadata or reset it.
+        # For safety, if we can't lock to read, assume we don't know the true state.
+        # However, an existing in-memory _lru_disk_metadata might be from a previous successful load.
+        # Let's proceed with current in-memory state if lock fails, but log verbosely.
+        if not _lru_disk_metadata or (
+            _lru_disk_metadata.get("adapters") == []
+            and _lru_disk_metadata.get("sft_runs") == []
+        ):
+            print(
+                "No in-memory LRU data, and lock failed. Initializing fresh for safety."
+            )
+            _lru_disk_metadata = {"adapters": [], "sft_runs": []}
+        return
+
+    try:
+        os.makedirs(os.path.dirname(LRU_METADATA_FILE), exist_ok=True)
+        if os.path.exists(LRU_METADATA_FILE):
+            try:
+                with open(LRU_METADATA_FILE, "r") as f:
+                    # Ensure file is not empty before loading
+                    content = f.read()
+                    if content.strip():
+                        _lru_disk_metadata = json.loads(content)
+                    else:
+                        _lru_disk_metadata = {"adapters": [], "sft_runs": []}
+                # Ensure basic structure
+                if "adapters" not in _lru_disk_metadata:
+                    _lru_disk_metadata["adapters"] = []
+                if "sft_runs" not in _lru_disk_metadata:
+                    _lru_disk_metadata["sft_runs"] = []
+                # print(f"LRU metadata loaded from {LRU_METADATA_FILE}")
+            except json.JSONDecodeError:
+                print(
+                    f"Warning: Could not decode LRU metadata from {LRU_METADATA_FILE}. Starting fresh."
+                )
+                _lru_disk_metadata = {"adapters": [], "sft_runs": []}
+        else:
+            # print(f"LRU metadata file not found at {LRU_METADATA_FILE}. Initializing fresh.")
+            _lru_disk_metadata = {"adapters": [], "sft_runs": []}
+    finally:
+        _release_lock(lock_fd)
+
+
+def _update_item_access(item_name: str, item_type: str, item_path: str):
+    """Updates or adds an item's access time and size in the LRU metadata.
+    Locking is handled by _load_lru_metadata and _save_lru_metadata.
+    This function assumes _lru_disk_metadata is the current, authoritative copy.
+    """
+    global _lru_disk_metadata
+
+    # It's better to acquire a lock for the read-modify-write cycle here
+    # if _load_lru_metadata itself isn't called immediately before.
+    # Let's refine: _update_item_access should be atomic.
+
+    lock_fd = _acquire_lock(LRU_LOCK_FILE)
+    if lock_fd is None:
+        print(
+            f"Warning: Could not acquire lock for updating LRU item {item_name}. Update skipped."
+        )
+        return
+
+    try:
+        # Load the latest metadata from disk to avoid operating on a stale in-memory version
+        # This mimics _load_lru_metadata's core file reading logic but within an existing lock
+        temp_metadata = {"adapters": [], "sft_runs": []}  # Default if file is empty/new
+        if os.path.exists(LRU_METADATA_FILE):
+            try:
+                with open(LRU_METADATA_FILE, "r") as f_read:
+                    content = f_read.read()
+                    if content.strip():  # Check if file is not empty
+                        temp_metadata = json.loads(content)
+                if "adapters" not in temp_metadata:
+                    temp_metadata["adapters"] = []
+                if "sft_runs" not in temp_metadata:
+                    temp_metadata["sft_runs"] = []
+            except json.JSONDecodeError:
+                print(
+                    f"Warning: JSON decode error during _update_item_access for {item_name}. Using fresh metadata for this op."
+                )
+                # If decode fails, we might overwrite. This is a risk.
+                # Or, we could choose to not proceed with the update.
+                # For now, let's proceed assuming we'll save a corrected version.
+                temp_metadata = {"adapters": [], "sft_runs": []}  # Fallback
+
+        _lru_disk_metadata = (
+            temp_metadata  # Update global with what we just read under lock
+        )
+
+        if item_type not in _lru_disk_metadata:
+            _lru_disk_metadata[item_type] = []
+
+        item_list = _lru_disk_metadata[item_type]
+        found_item = None
+        for item in item_list:
+            if item.get("name") == item_name:
+                found_item = item
+                break
+
+        current_size_mb = _get_dir_size_mb(item_path)
+        current_time = int(time.time())
+
+        if current_size_mb == 0 and not os.path.exists(
+            item_path
+        ):  # Item effectively gone
+            if found_item:
+                item_list.remove(found_item)
+                print(
+                    f"Removed non-existent item '{item_name}' ({item_type}) from LRU metadata."
+                )
+            # Save immediately after modification
+            with open(LRU_METADATA_FILE, "w") as f_write:
+                json.dump(_lru_disk_metadata, f_write, indent=4)
+            return  # Lock will be released in finally
+
+        if found_item:
+            found_item["last_accessed_ts"] = current_time
+            found_item["size_mb"] = current_size_mb
+            found_item["path"] = item_path
+            print(
+                f"Updated LRU access for '{item_name}' ({item_type}), size: {current_size_mb:.2f} MB"
+            )
+        else:
+            item_list.append(
+                {
+                    "name": item_name,
+                    "path": item_path,
+                    "size_mb": current_size_mb,
+                    "last_accessed_ts": current_time,
+                }
+            )
+            print(
+                f"Added new item to LRU: '{item_name}' ({item_type}), size: {current_size_mb:.2f} MB, path: {item_path}"
+            )
+
+        # Save immediately after modification
+        with open(LRU_METADATA_FILE, "w") as f_write:
+            json.dump(_lru_disk_metadata, f_write, indent=4)
+
+    except Exception as e:
+        print(f"Error during _update_item_access for {item_name}: {e}")
+    finally:
+        _release_lock(lock_fd)
+
+
+def _ensure_storage_limits():
+    """Ensures storage usage is within limits, evicting LRU items if necessary.
+    This function performs a read-modify-write cycle on the metadata and file system.
+    """
+    global _lru_disk_metadata, state
+
+    lock_fd = _acquire_lock(LRU_LOCK_FILE)
+    if lock_fd is None:
+        print(
+            "Warning: Could not acquire lock for _ensure_storage_limits. Operation skipped."
+        )
+        return
+
+    try:
+        # Load the very latest metadata from disk under lock
+        current_disk_metadata = {"adapters": [], "sft_runs": []}
+        if os.path.exists(LRU_METADATA_FILE):
+            try:
+                with open(LRU_METADATA_FILE, "r") as f_read:
+                    content = f_read.read()
+                    if content.strip():
+                        current_disk_metadata = json.loads(content)
+                if "adapters" not in current_disk_metadata:
+                    current_disk_metadata["adapters"] = []
+                if "sft_runs" not in current_disk_metadata:
+                    current_disk_metadata["sft_runs"] = []
+            except json.JSONDecodeError:
+                print(
+                    "Warning: JSON decode error in _ensure_storage_limits. Initializing fresh for this op."
+                )
+                # Fallback to an empty structure if decode fails, to prevent operating on corrupted data
+                current_disk_metadata = {"adapters": [], "sft_runs": []}
+
+        _lru_disk_metadata = current_disk_metadata  # Work with the fresh copy
+
+        max_adapter_storage_mb = float(
+            os.getenv("MAX_ADAPTER_STORAGE_MB", DEFAULT_MAX_ADAPTER_STORAGE_MB)
+        )
+        max_sft_run_storage_mb = float(
+            os.getenv("MAX_SFTRUN_STORAGE_MB", DEFAULT_MAX_SFTRUN_STORAGE_MB)
+        )
+
+        # --- Manage Adapters ---
+        adapters = sorted(
+            _lru_disk_metadata.get("adapters", []),
+            key=lambda x: x.get("last_accessed_ts", 0),  # type: ignore
+        )
+        current_adapter_size_mb = sum(item.get("size_mb", 0) for item in adapters)
+        # print(f"Current adapter storage: {current_adapter_size_mb:.2f} MB / {max_adapter_storage_mb:.2f} MB limit.")
+
+        adapters_to_keep = []
+        evicted_adapter_count = 0
+        metadata_changed = False
+
+        for item in adapters:
+            if (
+                current_adapter_size_mb <= max_adapter_storage_mb
+                and item.get("path")
+                and os.path.exists(item.get("path"))
+            ):
+                adapters_to_keep.append(item)
+                continue
+
+            item_path = item.get("path")
+            item_name = item.get("name")
+            item_size = item.get("size_mb", 0)
+
+            if not item_path or not os.path.exists(item_path):
+                if item_path:  # Only subtract size if it was supposed to be there
+                    current_adapter_size_mb -= item_size
+                print(
+                    f"Evicting (metadata only, path missing): Adapter '{item_name}' from {item_path}"
+                )
+                evicted_adapter_count += 1
+                metadata_changed = True
+                continue
+
+            if current_adapter_size_mb > max_adapter_storage_mb:
+                print(
+                    f"Evicting adapter '{item_name}' (size: {item_size:.2f} MB, path: {item_path}) to free up space."
+                )
+                try:
+                    shutil.rmtree(item_path)
+                    current_adapter_size_mb -= item_size
+                    evicted_adapter_count += 1
+                    metadata_changed = True
+
+                    if (
+                        hasattr(state, "loaded_adapter_names_lru")
+                        and item_name in state.loaded_adapter_names_lru
+                    ):
+                        state.loaded_adapter_names_lru.remove(item_name)
+                    if (
+                        hasattr(state, "base_model")
+                        and hasattr(state.base_model, "peft_config")
+                        and item_name in state.base_model.peft_config
+                    ):
+                        state.base_model.delete_adapter(item_name)
+                        _torch = globals().get("torch")
+                        if (
+                            _torch
+                            and hasattr(_torch.cuda, "is_available")
+                            and _torch.cuda.is_available()
+                        ):
+                            _torch.cuda.empty_cache()
+                        gc.collect()
+                except OSError as e:
+                    print(f"Error deleting adapter directory {item_path}: {e}")
+                    adapters_to_keep.append(item)  # Keep if deletion failed
+            else:  # Path exists, but we are within budget now
+                adapters_to_keep.append(item)
+
+        _lru_disk_metadata["adapters"] = sorted(
+            adapters_to_keep,
+            key=lambda x: x.get("last_accessed_ts", 0),  # type: ignore
+            reverse=True,
+        )
+        if evicted_adapter_count > 0:
+            print(
+                f"Evicted {evicted_adapter_count} adapters. Remaining adapter storage: {current_adapter_size_mb:.2f} MB."
+            )
+
+        # --- Manage SFT Runs ---
+        sft_runs = sorted(
+            _lru_disk_metadata.get("sft_runs", []),
+            key=lambda x: x.get("last_accessed_ts", 0),  # type: ignore
+        )
+        current_sft_run_size_mb = sum(item.get("size_mb", 0) for item in sft_runs)
+        # print(f"Current SFT run storage: {current_sft_run_size_mb:.2f} MB / {max_sft_run_storage_mb:.2f} MB limit.")
+
+        sft_runs_to_keep = []
+        evicted_sft_count = 0
+        for item in sft_runs:
+            if (
+                current_sft_run_size_mb <= max_sft_run_storage_mb
+                and item.get("path")
+                and os.path.exists(item.get("path"))
+            ):
+                sft_runs_to_keep.append(item)
+                continue
+
+            item_path = item.get("path")
+            item_name = item.get("name")
+            item_size = item.get("size_mb", 0)
+
+            if not item_path or not os.path.exists(item_path):
+                if item_path:
+                    current_sft_run_size_mb -= item_size
+                print(
+                    f"Evicting (metadata only, path missing): SFT run '{item_name}' from {item_path}"
+                )
+                evicted_sft_count += 1
+                metadata_changed = True
+                continue
+
+            if current_sft_run_size_mb > max_sft_run_storage_mb:
+                print(
+                    f"Evicting SFT run '{item_name}' (size: {item_size:.2f} MB, path: {item_path}) to free up space."
+                )
+                try:
+                    shutil.rmtree(item_path)
+                    current_sft_run_size_mb -= item_size
+                    evicted_sft_count += 1
+                    metadata_changed = True
+                except OSError as e:
+                    print(f"Error deleting SFT run directory {item_path}: {e}")
+                    sft_runs_to_keep.append(item)
+            else:  # Path exists, but we are within budget
+                sft_runs_to_keep.append(item)
+
+        _lru_disk_metadata["sft_runs"] = sorted(
+            sft_runs_to_keep,
+            key=lambda x: x.get("last_accessed_ts", 0),  # type: ignore
+            reverse=True,
+        )
+        if evicted_sft_count > 0:
+            print(
+                f"Evicted {evicted_sft_count} SFT runs. Remaining SFT run storage: {current_sft_run_size_mb:.2f} MB."
+            )
+
+        if (
+            metadata_changed or evicted_adapter_count > 0 or evicted_sft_count > 0
+        ):  # Save if any changes were made
+            with open(LRU_METADATA_FILE, "w") as f_write:
+                json.dump(_lru_disk_metadata, f_write, indent=4)
+            # print(f"LRU metadata (potentially) updated by _ensure_storage_limits.")
+
+    except Exception as e:
+        print(f"Error during _ensure_storage_limits: {e}")
+    finally:
+        _release_lock(lock_fd)
+
+
+# --- End LRU Disk Cache Management ---
 
 
 class TrainingRequest(BaseModel):
@@ -89,6 +491,11 @@ def init():
 
     os.makedirs(ADAPTER_DIR, exist_ok=True)
 
+    # --- LRU Disk Cache Init ---
+    _load_lru_metadata()
+    _ensure_storage_limits()  # Perform initial cleanup if needed
+    # --- End LRU Disk Cache Init ---
+
     @dataclass
     class TrainingState:
         base_model: FastVisionModel
@@ -96,6 +503,8 @@ def init():
         base_model_id: str
         adapters: List[V1Adapter]
         cache: Cache
+        loaded_adapter_names_lru: collections.deque  # LRU cache for adapter names
+        max_loaded_adapters: int  # Max number of adapters to keep in memory
 
     print("Loading base model and tokenizer...")
     base_model, model_processor = FastVisionModel.from_pretrained(
@@ -164,6 +573,8 @@ def init():
         base_model_id=BASE_MODEL_ID,
         adapters=[],
         cache=Cache(),
+        loaded_adapter_names_lru=collections.deque(maxlen=MAX_LOADED_ADAPTERS),
+        max_loaded_adapters=MAX_LOADED_ADAPTERS,
     )
 
 
@@ -179,6 +590,48 @@ def add_or_load_adapter_for_model(
     3. Uses hotswap_adapter() only when updating existing adapters with new weights
     """
     from peft import LoraConfig  # type: ignore  # noqa: F401
+
+    # --- LRU Cache Management ---
+    print(
+        f"[LRU Cache] Before managing '{adapter_name}': {list(state.loaded_adapter_names_lru)}"
+    )
+
+    if adapter_name in state.loaded_adapter_names_lru:
+        # Adapter is already in LRU, move it to MRU (right end of deque)
+        state.loaded_adapter_names_lru.remove(adapter_name)
+        state.loaded_adapter_names_lru.append(adapter_name)
+        print(f"[LRU Cache] Moved '{adapter_name}' to MRU.")
+    else:
+        # Adapter is new to the LRU cache
+        if len(state.loaded_adapter_names_lru) >= state.max_loaded_adapters:
+            # Cache is full, evict the LRU adapter (left end of deque)
+            lru_adapter_to_evict = state.loaded_adapter_names_lru.popleft()
+            print(
+                f"[LRU Cache] Cache full. Evicting LRU adapter: '{lru_adapter_to_evict}'"
+            )
+            if lru_adapter_to_evict in model.peft_config:
+                try:
+                    model.delete_adapter(lru_adapter_to_evict)
+                    print(
+                        f"[LRU Cache] Successfully deleted adapter '{lru_adapter_to_evict}' from PeftModel."
+                    )
+                except Exception as e:
+                    print(
+                        f"[LRU Cache] Error deleting adapter '{lru_adapter_to_evict}' from PeftModel: {e}"
+                    )
+            else:
+                print(
+                    f"[LRU Cache] Adapter '{lru_adapter_to_evict}' was in LRU but not in PeftModel config. No deletion needed from model."
+                )
+
+        # Add the new adapter to MRU (right end of deque)
+        state.loaded_adapter_names_lru.append(adapter_name)
+        print(f"[LRU Cache] Added '{adapter_name}' to MRU.")
+
+    print(
+        f"[LRU Cache] After managing '{adapter_name}': {list(state.loaded_adapter_names_lru)}"
+    )
+    # --- End LRU Cache Management ---
 
     # Check hotswap availability with detailed debugging
     hotswap_available = False
@@ -314,6 +767,9 @@ def add_or_load_adapter_for_model(
             print(
                 f"[Smart Adapter] Successfully hotswapped new weights into '{adapter_name}'"
             )
+            _update_item_access(
+                adapter_name, "adapters", os.path.join(ADAPTER_DIR, adapter_name)
+            )
         except Exception as e:
             print(
                 f"[Smart Adapter] Hotswap failed with detailed error: {type(e).__name__}: {str(e)}"
@@ -347,6 +803,9 @@ def add_or_load_adapter_for_model(
     # Set the adapter as active
     model.set_adapter(adapter_name)
     print(f"[Smart Adapter] Active adapter set to: '{model.active_adapters}'")
+    _update_item_access(
+        adapter_name, "adapters", os.path.join(ADAPTER_DIR, adapter_name)
+    )
     return adapter_base_folder
 
 
@@ -397,42 +856,55 @@ def add_adapter_traditionally(
             print(f"[Traditional] Error loading weights: {e}")
 
     model.set_adapter(adapter_name)
+    # Path for adapter directory
+    adapter_disk_path = os.path.join(ADAPTER_DIR, adapter_name)
+    _update_item_access(adapter_name, "adapters", adapter_disk_path)
     return os.path.dirname(path_containing_adapter_files)
 
 
 def drop_adapter_from_model(model: "PeftModel", adapter_name_to_drop: str):  # type: ignore # noqa: F821
     import torch  # type: ignore
 
+    global state  # Ensure we are using the global state
+
     print(f"\n[Adapter Management] Request to drop adapter: '{adapter_name_to_drop}'")
 
-    # With smart management, we generally want to KEEP adapters loaded for fast switching
-    # Only drop if we're running out of memory or explicitly requested
-    print(
-        f"[Adapter Management] Currently loaded adapters: {list(model.peft_config.keys())}"
-    )
-    print(f"[Adapter Management] Currently active: {model.active_adapters}")
+    # Remove from LRU cache if present
+    if adapter_name_to_drop in state.loaded_adapter_names_lru:
+        state.loaded_adapter_names_lru.remove(adapter_name_to_drop)
+        print(f"[LRU Cache] Removed '{adapter_name_to_drop}' from LRU cache.")
+    else:
+        print(f"[LRU Cache] Adapter '{adapter_name_to_drop}' not found in LRU cache.")
 
-    # For now, just deactivate the adapter but keep it loaded for fast switching later
+    # Deactivate and delete from PeftModel
     if adapter_name_to_drop in model.peft_config:
         print(
-            f"[Adapter Management] Keeping adapter '{adapter_name_to_drop}' loaded but deactivating"
+            f"[Adapter Management] Deleting adapter '{adapter_name_to_drop}' from PeftModel."
         )
-        model.active_adapter = None
-        print("[Adapter Management] Deactivated adapter - no active adapter")
+        if model.active_adapter == adapter_name_to_drop:
+            model.active_adapter = None  # Deactivate if it was active
+            print(
+                f"[Adapter Management] Deactivated active adapter '{adapter_name_to_drop}'."
+            )
+        try:
+            model.delete_adapter(adapter_name_to_drop)
+            print(
+                f"[Adapter Management] Successfully deleted '{adapter_name_to_drop}' from PeftModel."
+            )
+        except Exception as e:
+            print(
+                f"[Adapter Management] Error deleting adapter '{adapter_name_to_drop}' from PeftModel: {e}"
+            )
     else:
         print(
-            f"[Adapter Management] Adapter '{adapter_name_to_drop}' not found in loaded adapters"
+            f"[Adapter Management] Adapter '{adapter_name_to_drop}' not found in loaded PeftModel adapters. No deletion needed from model."
         )
-
-    # Optional: Could add memory pressure detection and selective dropping here
-    # For example:
-    # if memory_pressure_detected():
-    #     print(f"[Adapter Management] Memory pressure detected, actually dropping '{adapter_name_to_drop}'")
-    #     model.delete_adapter(adapter_name_to_drop)
 
     torch.cuda.empty_cache()
     gc.collect()
-    print(f"[Adapter Management] Finished managing adapter '{adapter_name_to_drop}'.\n")
+    print(
+        f"[Adapter Management] Finished dropping adapter '{adapter_name_to_drop}'. LRU: {list(state.loaded_adapter_names_lru)}\n"
+    )
 
 
 def train_lora_adapter(
@@ -456,6 +928,8 @@ def train_lora_adapter(
         f"\n--- Starting train_lora_adapter for adapter: '{adapter_name_to_train}' (Epochs: {num_epochs}, Resume: {resume_from_saved_state}) ---"
     )
 
+    os.system("nvidia-smi")
+
     # Use smart adapter management
     start_adapter_time = time.time()
     adapter_base_save_folder = add_or_load_adapter_for_model(
@@ -470,6 +944,11 @@ def train_lora_adapter(
     print(
         f"Adapter base save folder for '{adapter_name_to_train}': {adapter_base_save_folder}"
     )
+
+    loaded_adapter_names = []
+    if hasattr(state.base_model, "peft_config"):
+        loaded_adapter_names = list(state.base_model.peft_config.keys())
+    print("loaded_adapter_names: ", loaded_adapter_names)
 
     # The smart management ensures the correct adapter is active
     print(f"Training will use adapter: '{adapter_name_to_train}'")
@@ -619,11 +1098,23 @@ def train_lora_adapter(
     print("Adapter weights saved.")
 
     # With smart management, we keep the adapter loaded for fast future access
+    # The LRU cache in add_or_load_adapter_for_model will handle eviction.
+    # We'll just deactivate the current adapter if it's active.
     print(
-        f"[Smart Management] Keeping adapter '{adapter_name_to_train}' loaded for fast future access"
+        f"[LRU Management] Adapter '{adapter_name_to_train}' remains in LRU cache: {list(state.loaded_adapter_names_lru)}. Deactivating if active."
     )
-    # Just deactivate for now
-    drop_adapter_from_model(state.base_model, adapter_name_to_train)
+    if (
+        state.base_model.active_adapter == adapter_name_to_train
+        or adapter_name_to_train in state.base_model.active_adapters
+    ):  # Check both single and multiple active adapters
+        state.base_model.active_adapter = None  # Deactivate
+        print(
+            f"[LRU Management] Deactivated adapter '{adapter_name_to_train}'. No active adapter set by default."
+        )
+    else:
+        print(
+            f"[LRU Management] Adapter '{adapter_name_to_train}' was not active. No deactivation needed."
+        )
 
     del trainer, model_ready_for_training
     torch.cuda.empty_cache()
@@ -631,6 +1122,14 @@ def train_lora_adapter(
     print(
         f"--- train_lora_adapter for adapter: '{adapter_name_to_train}' completed ---\n"
     )
+
+    # --- LRU Disk Cache: Update access for adapter after training (weights saved within train_lora_adapter) ---
+    _update_item_access(
+        adapter_name_to_train,
+        "adapters",
+        os.path.join(ADAPTER_DIR, adapter_name_to_train),
+    )
+    # ---
 
 
 def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
@@ -654,6 +1153,11 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
         raise RuntimeError(
             "Base model and processor not initialized. Ensure init() has run."
         )
+
+    # --- LRU Disk Cache: Make space before starting ---
+    print("Ensuring storage limits before starting training operations...")
+    _ensure_storage_limits()
+    # ---
 
     # First ensure CUDA cache is cleared
     if torch.cuda.is_available():
@@ -788,6 +1292,13 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
                 bucket.sync(adapter_weights_bucket_uri, actual_local_adapter_files_path)
                 print(f"Synced adapter weights to {actual_local_adapter_files_path}")
                 is_continue = True
+                # --- LRU Disk Cache: Update access for synced adapter ---
+                _update_item_access(
+                    adapter_name,
+                    "adapters",
+                    local_adapter_weights_dir_for_current_adapter,
+                )
+                # ---
             except Exception as e:
                 print(
                     f"Warning: Failed to sync adapter weights from {adapter_weights_bucket_uri}: {e}. May proceed without them if adapter is being created fresh by train_lora_adapter."
@@ -928,6 +1439,59 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
             # Find the latest checkpoint directory
             latest_checkpoint = find_latest_checkpoint(local_sft_runs_dir)
             if latest_checkpoint:
+                # --- Prune checkpoint directory before uploading ---
+                print(f"Preparing to prune checkpoint directory: {latest_checkpoint}")
+                print(f"  Target adapter to keep artifacts for: '{adapter_name}'")
+
+                adapters_in_peft_config = []
+                if hasattr(state, "base_model") and hasattr(
+                    state.base_model, "peft_config"
+                ):
+                    adapters_in_peft_config = list(state.base_model.peft_config.keys())
+                    print(
+                        f"  Adapters known to be loaded in base_model's peft_config: {adapters_in_peft_config}"
+                    )
+                else:
+                    print(
+                        "  Warning: Could not retrieve loaded adapters from state.base_model.peft_config. Pruning might be affected."
+                    )
+
+                items_in_checkpoint_main_dir = os.listdir(latest_checkpoint)
+                print(
+                    f"  Items found in checkpoint directory '{latest_checkpoint}': {items_in_checkpoint_main_dir}"
+                )
+
+                for item_name in items_in_checkpoint_main_dir:
+                    item_full_path = os.path.join(latest_checkpoint, item_name)
+                    if os.path.isdir(item_full_path):
+                        # Check if this directory is an adapter directory that is NOT the one we just trained
+                        if (
+                            item_name in adapters_in_peft_config
+                            and item_name != adapter_name
+                        ):
+                            print(
+                                f"    Pruning: Removing other adapter directory '{item_name}' from checkpoint."
+                            )
+                            shutil.rmtree(item_full_path)
+                        elif item_name == adapter_name:
+                            print(
+                                f"    Keeping: Target adapter directory '{item_name}'."
+                            )
+                        else:
+                            # This directory is not the target adapter and not clearly another known adapter from peft_config.
+                            # Could be an unexpected directory, or an adapter not in peft_config (less likely).
+                            # For safety, only known "other" adapters are pruned.
+                            print(
+                                f"    Skipping: Directory '{item_name}' (not the target, and not identified as another loaded adapter)."
+                            )
+                    else:
+                        # Keep all files at the root of the checkpoint directory (e.g., optimizer.pt, trainer_state.json)
+                        print(f"    Keeping: File '{item_name}'.")
+                print(
+                    f"  Pruning of checkpoint directory '{latest_checkpoint}' complete."
+                )
+                # --- End of pruning ---
+
                 # Extract the checkpoint name (e.g., "checkpoint-132")
                 latest_checkpoint_name = os.path.basename(latest_checkpoint)
                 # Create a specific path for just the latest checkpoint
@@ -953,6 +1517,13 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
                 f"Warning: Local SFT runs directory {local_sft_runs_dir} is empty or does not exist after training. Cannot sync to bucket."
             )
             checkpoint_uri_for_adapter = sft_checkpoints_bucket_uri
+
+        # --- LRU Disk Cache: Update access for SFT run directory ---
+        if os.path.exists(local_sft_runs_dir):
+            _update_item_access(
+                f"{adapter_name}_sft_run", "sft_runs", local_sft_runs_dir
+            )
+        # ---
 
         # Collect metrics from trainer_state.json in the local SFT runs directory
         training_metrics = {}
@@ -1083,7 +1654,7 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
 def UnslothSFT(
     platform: str = "runpod",
     accelerators: List[str] = ["1:H100_SXM"],
-    image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-trainer:324d8c6",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-train:latest"
+    image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-trainer:c2caa58",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-train:latest"
     scale: V1Scale = scale,
     namespace: Optional[str] = None,
     env: Optional[List[V1EnvVar]] = None,
