@@ -40,7 +40,7 @@ pip install -e git+https://github.com/pbarker/unsloth.git#egg=unsloth
 """
 
 BASE_MODEL_ID = os.getenv("BASE_MODEL_ID", "unsloth/Qwen2.5-VL-32B-Instruct")
-MAX_LOADED_ADAPTERS = 6
+MAX_LOADED_ADAPTERS = 4
 
 # --- LRU Disk Cache Management (Copied and Adapted from unsloth_trainer.py) ---
 LRU_METADATA_FILE = (
