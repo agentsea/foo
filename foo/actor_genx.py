@@ -173,7 +173,7 @@ class Actor:
 
         print("request", request)
         chat_start_time = time.time()
-        response = self.model(request, wait=True, user_key=task.auth_token)  # type: ignore
+        response = self.model(request, poll=True, user_key=task.auth_token)  # type: ignore
         print("response", response)
         chat_end_time = time.time()
         console.print(
