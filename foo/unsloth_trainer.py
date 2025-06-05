@@ -24,7 +24,7 @@ from pydantic import BaseModel
 
 BASE_MODEL_ID = "unsloth/Qwen2.5-VL-32B-Instruct"
 ADAPTER_DIR = "/nebu/cache/adapters"
-MAX_LOADED_ADAPTERS = 8
+MAX_LOADED_ADAPTERS = 6
 
 # --- LRU Disk Cache Management ---
 LRU_METADATA_FILE = "/nebu/cache/lru_disk_cache.json"
