@@ -1,19 +1,22 @@
+# type: ignore
+
 import os
 import time
-from dataclasses import dataclass
+
+# from dataclasses import dataclass
 from typing import List, Optional
 
 from agentdesk import Desktop
 from chatmux.openai import (
     ChatRequest,
     ChatResponse,
-    ImageContentPart,
-    ImageUrl,
-    RequestMessage,
-    TextContentPart,
-    UserMessage,
-    UserMessageContent,
-    UserMessageContentPart,
+    # ImageContentPart,
+    # ImageUrl,
+    # RequestMessage,
+    # TextContentPart,
+    # UserMessage,
+    # UserMessageContent,
+    # UserMessageContentPart,
 )
 from json_repair import repair_json
 from nebu import V1EnvVar
@@ -23,6 +26,12 @@ from rich.json import JSON
 from skillpacks import EnvState, V1Action
 from taskara import Task, TaskStatus
 
+from .actor_utils import (
+    ReasonedAction,
+    Step,
+    build_actor_messages_chatmux,
+    parse_response,
+)
 from .img import upload_image_to_gcs
 
 console = Console(force_terminal=True)
@@ -35,25 +44,25 @@ class V1ChatEvent(BaseModel):
     response: ChatResponse
 
 
-@dataclass
-class Step:
-    """A step in an episode"""
+# @dataclass
+# class Step:
+#     """A step in an episode"""
 
-    state: EnvState
-    action: V1Action
-    action_opts: Optional[List[V1Action]] = None
-    thread: Optional[List[RequestMessage]] = None
-    task: Optional[Task] = None
-    model_id: Optional[str] = None
-    prompt: Optional[V1ChatEvent] = None
-    reason: Optional[str] = None
-    end: bool = False
-    result: Optional[str] = None
+#     state: EnvState
+#     action: V1Action
+#     action_opts: Optional[List[V1Action]] = None
+#     thread: Optional[List[RequestMessage]] = None
+#     task: Optional[Task] = None
+#     model_id: Optional[str] = None
+#     prompt: Optional[V1ChatEvent] = None
+#     reason: Optional[str] = None
+#     end: bool = False
+#     result: Optional[str] = None
 
 
-class ReasonedAction(BaseModel):
-    action: V1Action
-    reason: str
+# class ReasonedAction(BaseModel):
+#     action: V1Action
+#     reason: str
 
 
 class Actor:
@@ -125,31 +134,34 @@ class Actor:
         x, y = device.mouse_coordinates()
         console.print(f"mouse coordinates: ({x}, {y})", style="white")
 
-        ctx = self.get_ctx(task, device, history)
+        # ctx = self.get_ctx(task, device, history)
 
-        console.print("context: ", style="white")
-        console.print(ctx, style="white")
+        # console.print("context: ", style="white")
+        # console.print(ctx, style="white")
+
+        messages = build_actor_messages_chatmux(task, history, gcs_url)
+        console.print(f"created {len(messages)} messages", style="white")
 
         # Construct messages using new models
-        messages = [
-            UserMessage(
-                role="user",
-                name=None,
-                content=UserMessageContent(
-                    root=[
-                        UserMessageContentPart(
-                            root=TextContentPart(type="text", text=ctx)
-                        ),
-                        UserMessageContentPart(
-                            root=ImageContentPart(
-                                type="image_url",
-                                image_url=ImageUrl(url=gcs_url, detail="auto"),
-                            )
-                        ),
-                    ]
-                ),
-            )
-        ]
+        # messages = [
+        #     UserMessage(
+        #         role="user",
+        #         name=None,
+        #         content=UserMessageContent(
+        #             root=[
+        #                 UserMessageContentPart(
+        #                     root=TextContentPart(type="text", text=ctx)
+        #                 ),
+        #                 UserMessageContentPart(
+        #                     root=ImageContentPart(
+        #                         type="image_url",
+        #                         image_url=ImageUrl(url=gcs_url, detail="auto"),
+        #                     )
+        #                 ),
+        #             ]
+        #         ),
+        #     )
+        # ]
 
         # Create the full request object using the new ChatRequest model
         request = ChatRequest(  # type: ignore
@@ -161,7 +173,7 @@ class Actor:
 
         print("request", request)
         chat_start_time = time.time()
-        response = self.model(request, wait=True, user_key=task.auth_token)  # type: ignore
+        response = self.model(request, poll=True, user_key=task.auth_token)  # type: ignore
         print("response", response)
         chat_end_time = time.time()
         console.print(
@@ -178,7 +190,8 @@ class Actor:
             response = ChatResponse.model_validate(content)
 
         try:
-            actions = self._parse_response(response)
+            actions = parse_response(response)
+            # actions = self._parse_response(response)
             selection = self._select_action(actions)
             console.print("action selection: ", style="white")
             console.print(JSON.from_data(selection.model_dump()))
@@ -194,7 +207,7 @@ class Actor:
 
         # The agent will return 'end' if it believes it's finished
         end = False
-        if selection.action.name == "end":
+        if selection.action.name == "end" or selection.action.name == "result":
             console.print("final result: ", style="green")
             console.print(JSON.from_data(selection.action.parameters))
             task.post_message(

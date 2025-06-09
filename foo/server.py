@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from surfkit.server.routes import task_router  # type: ignore
 
 # THIS IS THE KEY LINE FOR QUICKLY SWAPPING AGENTS
-from .agent_genx import Agent
+from .agent import Agent
 
 # Configure logging
 logger: Final = logging.getLogger("foo")

@@ -12,7 +12,7 @@ from taskara.server.models import V1TaskUpdate
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 # ANOTHER KEY LINE FOR QUICKLY SWAPPING AGENTS
-from foo.agent_genx import Foo as Agent
+from .agent import Foo as Agent
 
 DEBUG_ENV_VAR = os.getenv("DEBUG", "false").lower() == "true"
 log_level = logging.DEBUG if DEBUG_ENV_VAR else logging.INFO

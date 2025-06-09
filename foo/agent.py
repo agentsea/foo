@@ -1,3 +1,5 @@
+# type: ignore
+
 import logging
 import os
 import time
@@ -26,18 +28,19 @@ from tenacity import (
 )
 from toolfuse.util import AgentUtils
 
-from .actor import Actor, Step
+from .actor import Actor
+from .actor_utils import Step, create_actor_prompt_for_sft
 from .buffer import (
     create_actor_sft_buffer,
-    create_description_annot_sft_buffer,
-    create_reason_annot_sft_buffer,
+    # create_description_annot_sft_buffer,
+    # create_reason_annot_sft_buffer,
     create_val_sft_buffer,
-    create_validation_annot_sft_buffer,
+    # create_validation_annot_sft_buffer,
 )
 from .prompts import (
-    create_actor_prompt,
+    # create_actor_prompt,
     create_description_prompt,
-    create_reason_actor_prompt,
+    # create_reason_actor_prompt,
     create_reason_prompt,
     create_validation_actor_prompt,
     create_validation_prompt,
@@ -107,13 +110,13 @@ class Foo(TaskAgent):
 
         print("current env: ", os.environ)
 
-        server_config = ServerConfig(
-            name="foo",
-            api_key=internal_auth_token,
-            server=os.getenv("ORIGN_SERVER"),
-            auth_server=os.getenv("AGENTSEA_AUTH_SERVER"),
-        )
-        admin_orign_config = GlobalConfig(servers=[server_config], current_server="foo")
+        # server_config = ServerConfig(
+        #     name="foo",
+        #     api_key=internal_auth_token,
+        #     server=os.getenv("ORIGN_SERVER"),
+        #     auth_server=os.getenv("AGENTSEA_AUTH_SERVER"),
+        # )
+        # admin_orign_config = GlobalConfig(servers=[server_config], current_server="foo")
 
         user_server_config = ServerConfig(
             name="foo",
@@ -166,17 +169,17 @@ class Foo(TaskAgent):
 
         val_sft_buffer = create_val_sft_buffer(val_adapter, skill.id, user_orign_config)
 
-        reason_annot_sft_buffer = create_reason_annot_sft_buffer(
-            skill.id, admin_orign_config
-        )
+        # reason_annot_sft_buffer = create_reason_annot_sft_buffer(
+        #     skill.id, admin_orign_config
+        # )
 
-        validation_annot_sft_buffer = create_validation_annot_sft_buffer(
-            skill.id, admin_orign_config
-        )
+        # validation_annot_sft_buffer = create_validation_annot_sft_buffer(
+        #     skill.id, admin_orign_config
+        # )
 
-        description_annot_sft_buffer = create_description_annot_sft_buffer(
-            skill.id, admin_orign_config
-        )
+        # description_annot_sft_buffer = create_description_annot_sft_buffer(
+        #     skill.id, admin_orign_config
+        # )
 
         print("\n----\nchecking task: ", task.id)
 
@@ -194,15 +197,15 @@ class Foo(TaskAgent):
         send_validation_annot_sft = []
         send_description_annot_sft = []
 
-        console.print("getting device...")
-        device = Desktop(
-            agentd_url="http://localhost:8000", check_health=False, requires_proxy=False
-        )
+        # console.print("getting device...")
+        # device = Desktop(
+        #     agentd_url="http://localhost:8000", check_health=False, requires_proxy=False
+        # )
 
-        console.print("getting ctx...")
-        content = Actor.get_ctx(task, device, [])
-        reason_content = Actor.get_reason_ctx(task, device, [])
-        console.print("got ctx")
+        # console.print("getting ctx...")
+        # content = Actor.get_ctx(task, device, [])
+        # reason_content = Actor.get_reason_ctx(task, device, [])
+        # console.print("got ctx")
 
         for i, action in enumerate(task.episode.actions):
             console.print("\n\n========\naction: ", action.__dict__, "\n\n")
@@ -224,9 +227,9 @@ class Foo(TaskAgent):
             console.print("approved: ", approved)
             console.print("action_correction: ", action_correction)
 
-            # if not approved:
-            #     console.print("skipping not approved", style="white")
-            #     continue
+            if not approved:
+                console.print("skipping not approved", style="white")
+                continue
 
             if "foo/train/status" in action.metadata:
                 console.print("skipping train", style="white")
@@ -453,19 +456,22 @@ class Foo(TaskAgent):
                     # send_validation_annot_dpo.append(validation_oai_prompt_copy)
 
             if approved:
-                response = (
-                    f"<think>{response_reason}</think><answer>{action_str}</answer>"
-                )
-
-                oai_prompt = create_actor_prompt(
-                    content=content, image_url=before_state, response=response
-                )
-
-                oai_reason_prompt = create_reason_actor_prompt(
-                    content=reason_content,
+                oai_prompt = create_actor_prompt_for_sft(
+                    task=task,
+                    reason=response_reason,
+                    action=action.action,
                     image_url=before_state,
-                    response=response_reason,
                 )
+
+                # response = (
+                #     f"<think>{response_reason}</think><answer>{action_str}</answer>"
+                # )
+
+                # oai_reason_prompt = create_reason_actor_prompt(
+                #     content=reason_content,
+                #     image_url=before_state,
+                #     response=response_reason,
+                # )
 
                 send_actor_sft.append(oai_prompt)
                 # send_actor_sft.append(oai_reason_prompt)
@@ -618,6 +624,10 @@ class Foo(TaskAgent):
                 raise ValueError("This agent expects a desktop")
 
             # Post a message to the default thread to let the user know the task is in progress
+            task.post_message(
+                "assistant",
+                "My last update was 2025-06-09, around 4pm EET.",
+            )
             task.post_message("assistant", f"Starting task '{task.description}'")
 
             # Create threads in the task to update the user
