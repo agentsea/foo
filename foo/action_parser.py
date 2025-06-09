@@ -256,7 +256,14 @@ def translate_ad_action_to_qwen_action_dict(action: V1Action) -> dict[str, Any]:
             },
         }
     else:
-        raise ValueError(f"Unknown action: {name}")
+        console.print(f"Unknown action: {name}; falling back to wait.", style="red")
+        return {
+            "name": "computer_use",
+            "arguments": {
+                "action": "wait",
+                "time": 1,
+            },
+        }
 
 
 if __name__ == "__main__":
