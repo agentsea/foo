@@ -134,10 +134,11 @@ def parse_action(content: str) -> Tuple[str, list[V1Action]]:
             action_name = "wait"
             parameters["seconds"] = tool_used_json["arguments"]["time"]
         elif action_name == "terminate":
-            action_name = "result"
+            action_name = "end"
             if "result" not in tool_used_json["arguments"]:
-                tool_used_json["arguments"]["result"] = thought
-            parameters["value"] = tool_used_json["arguments"]["result"]
+                tool_used_json["arguments"]["result"] = "I'm done!"
+            parameters["result"] = tool_used_json["arguments"]["result"]
+            parameters["comment"] = thought
 
         console.print(f"Parsed Action: {action_name}", style="yellow")
         console.print(f"Parsed Params: {parameters}", style="blue")
@@ -238,6 +239,8 @@ def translate_ad_action_to_qwen_action_dict(action: V1Action) -> dict[str, Any]:
             },
         }
     elif name == "result":
+        # TODO: remove this when we don't have old skills trained with `result` any longer
+        # (the action space change is introduced in 2025-06-09)
         return {
             "name": "computer_use",
             "arguments": {
@@ -252,7 +255,9 @@ def translate_ad_action_to_qwen_action_dict(action: V1Action) -> dict[str, Any]:
             "arguments": {
                 "action": "terminate",
                 "status": "success",
-                "result": "I'm done!",
+                "result": parameters["result"]
+                if "result" in parameters
+                else "I'm done!",
             },
         }
     else:
