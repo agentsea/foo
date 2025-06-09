@@ -189,6 +189,13 @@ class Actor:
                 raise ValueError("No content found in response")
             response = ChatResponse.model_validate(content)
 
+        raw_response = None
+        try:
+            raw_response = response.choices[0].message.content
+        except Exception as e:
+            console.print(f"Error parsing response: {e}", style="red")
+            raise
+
         try:
             actions = parse_response(response)
             # actions = self._parse_response(response)
@@ -196,6 +203,10 @@ class Actor:
             console.print("action selection: ", style="white")
             console.print(JSON.from_data(selection.model_dump()))
 
+            task.post_message(
+                "assistant",
+                f"💭 I think: {selection.reason}",
+            )
             task.post_message(
                 "assistant",
                 f"▶️ Taking action '{selection.action.name}' with parameters: {selection.action.parameters}",
@@ -244,7 +255,7 @@ class Actor:
             )
 
         if not selection.reason:
-            raise ValueError("No reason provided")
+            selection.reason = "I will do the following."
 
         event = V1ChatEvent(
             request=request,
@@ -261,6 +272,7 @@ class Actor:
             reason=selection.reason,
             end=end,
             result=action_response,
+            raw_response=raw_response,
         )
         step_end_time = time.time()
         console.print(f"Step took {step_end_time - start_time} seconds", style="white")

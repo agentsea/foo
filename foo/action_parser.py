@@ -79,6 +79,8 @@ def parse_action(content: str) -> Tuple[str, list[V1Action]]:
     pre_tool_match = re.search(pre_tool_pattern, content, re.DOTALL)
     if pre_tool_match:
         thought = pre_tool_match.group(1).strip()
+    else:
+        thought = ""
 
     for tool_used in tools_used:
         tool_used_json = json_repair.loads(tool_used)
