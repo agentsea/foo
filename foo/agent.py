@@ -37,6 +37,7 @@ from .buffer import (
     create_val_sft_buffer,
     # create_validation_annot_sft_buffer,
 )
+from .device_utils import DeviceUtils
 from .prompts import (
     # create_actor_prompt,
     create_description_prompt,
@@ -626,7 +627,7 @@ class Foo(TaskAgent):
             # Post a message to the default thread to let the user know the task is in progress
             task.post_message(
                 "assistant",
-                "My last update was 2025-06-09, around 6pm EET.",
+                "My last update was 2025-06-10, around 11:30am EET.",
             )
             task.post_message("assistant", f"Starting task '{task.description}'")
 
@@ -657,6 +658,7 @@ class Foo(TaskAgent):
 
             # Add standard agent utils to the device
             device.merge(AgentUtils())
+            device.merge(DeviceUtils())
 
             # Get the json schema for the tools
             tools = device.json_schema()
