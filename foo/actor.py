@@ -221,9 +221,16 @@ class Actor:
         if selection.action.name == "end" or selection.action.name == "result":
             console.print("final result: ", style="green")
             console.print(JSON.from_data(selection.action.parameters))
+            result = (
+                selection.action.parameters["result"]
+                if "result" in selection.action.parameters
+                else selection.action.parameters["value"]
+                if "value" in selection.action.parameters
+                else "I'm done!"
+            )
             task.post_message(
                 "assistant",
-                f"✅ I think the task is done, please review the result: {selection.action.parameters['value']}",
+                f"✅ I think the task is done, please review the result: {result}",
             )
             task.status = TaskStatus.FINISHED
             task.save()
