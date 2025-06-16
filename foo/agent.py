@@ -460,6 +460,9 @@ class Foo(TaskAgent):
                     # send_validation_annot_dpo.append(validation_oai_prompt_copy)
 
             if approved:
+                console.print(
+                    f"creating actor prompt for sft with scratchpad = {scratchpad_history}, reason = {reason_best}, description = {description_best}, action = {action.action}"
+                )
                 oai_prompt = create_actor_prompt_for_sft(
                     task=task,
                     reason=reason_best,
@@ -551,6 +554,12 @@ class Foo(TaskAgent):
                     val_ctx_reason_oai_prompt_copy["rejected_response"] = validation  # type: ignore
                     # send_val_dpo.append(val_ctx_reason_oai_prompt_copy)
 
+            if description_best:
+                scratchpad_history += f"✭ {description_best}\n"
+                console.print(
+                    f"adding to scratchpad: {description_best}; scratchpad = {scratchpad_history}"
+                )
+
         if send_val_sft:
             console.print("sending to val sft buffer...")
             val_sft_buffer.send(send_val_sft)
@@ -604,9 +613,6 @@ class Foo(TaskAgent):
             console.print("sending to description annot sft buffer...")
             # description_annot_sft_buffer.send(send_description_annot_sft)
 
-        if description_best:
-            scratchpad_history += f"✭ {description_best}\n"
-
     def solve_task(
         self,
         task: Task,
@@ -635,7 +641,7 @@ class Foo(TaskAgent):
             # Post a message to the default thread to let the user know the task is in progress
             task.post_message(
                 "assistant",
-                "My last update was 2025-06-16, around 1:05pm EET.",
+                "My last update was 2025-06-16, around 2:00pm EET.",
             )
             task.post_message("assistant", f"Starting task '{task.description}'")
 

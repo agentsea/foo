@@ -232,13 +232,18 @@ def create_actor_prompt_for_sft(
     image_url: str,
 ) -> dict[str, Any]:
     if scratchpad:
-        scratchpad_text = f"Steps I did so far:\n{scratchpad}"
+        old_scratchpad_text = f"Steps I did so far:\n{scratchpad}"
+        new_scratchpad_text = (
+            f"Steps I did so far:\n{scratchpad}\n\nThe next one is: {next_action}"
+        )
     else:
-        scratchpad_text = "Scratchpad is empty."
+        old_scratchpad_text = "[Empty]"
+        new_scratchpad_text = f"The next one is: {next_action}"
+
     response = f"""
 {reason}
 <scratchpad>
-{scratchpad_text}
+{new_scratchpad_text}
 </scratchpad>
 <next_action>
 {next_action}
@@ -249,11 +254,19 @@ def create_actor_prompt_for_sft(
 """
     messages = [
         {
-            "role": "user",
+            "role": "system",
             "content": [
                 {"type": "text", "text": system_prompt(task)},
                 {"type": "text", "text": tools_list()},
-                {"type": "text", "text": "What is the next action?"},
+            ],
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": f"Your scratchpad:\n\n{old_scratchpad_text}\n\nWhat is the next step?",
+                },
                 {"type": "image_url", "image_url": {"url": image_url}},
             ],
         },
