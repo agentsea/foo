@@ -231,11 +231,14 @@ def create_actor_prompt_for_sft(
     action: V1Action,
     image_url: str,
 ) -> dict[str, Any]:
+    if scratchpad:
+        scratchpad_text = f"Steps I did so far:\n{scratchpad}"
+    else:
+        scratchpad_text = "Scratchpad is empty."
     response = f"""
 {reason}
 <scratchpad>
-Steps I did so far:
-{scratchpad if scratchpad else "[Nothing]"}
+{scratchpad_text}
 </scratchpad>
 <next_action>
 {next_action}
