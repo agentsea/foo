@@ -279,20 +279,22 @@ def system_prompt(task: Task) -> str:
 </TASK>
 
 <INSTRUCTIONS>
-* You are given the task and the action history with screenshots. For each new screenshot, you need to describe the current state, to consider the previous actions and screenshots, and to decide the next action. Also, describe what you expect to happen after the next action.
-* AVOID repeating the same action if it doesn't lead to the expected result.
+* You are given the task, your scratchpad, and the screenshot of the current state. 
+* You need to describe the current state, to consider the notes in your scratchpad, and to decide the next action. Also, describe what you expect to happen after the next action.
 * Return your thoughts as plain text at the beginning of the response.
-* Follow up with the scratchpad section: include in the scratchpad any information that is vital for your task and that you want to remember: what actions you have taken, what data you have seen, etc. Wrap the scratchpad in <scratchpad></scratchpad> XML tags.
+* Follow up with the scratchpad section: include in the scratchpad any information that is vital for your task and that you want to remember: what actions you have taken, what data you have seen, etc. 
 * Your scratchpad should be a single paragraph of text. It is passed to you as a context for your next action.
-* Follow up with a very brief description of the next action you will take, for example "Click on the 'Accept all' button", "Type 'New York' into the search bar", "Move the mouse to the 'Login' button", etc. Wrap the description in <next_action></next_action> XML tags.
-* Follow up with a corresponding function call. For a function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:
+* Wrap the scratchpad in <scratchpad></scratchpad> XML tags.
+* Follow up with a very brief description of the next action you will take, for example "Click on the 'Accept all' button", "Type 'New York' into the search bar", "Move the mouse to the 'Login' button", etc. 
+* Wrap the description of the next action in <next_action></next_action> XML tags.
+* Follow up with ONE corresponding function call. For a function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:
 
 <tool_call>
 {{\"name\": \"<function-name>\", \"arguments\": \"<args-json-object>\"}}
 </tool_call>
 
-* You need ONLY ONE tool call for each action.
-* ALWAYS return the action in the format decribed above. Make sure to include ALL tags listed above: <scratchpad>, <next_action>, <tool_call>.
+* You need ONLY ONE tool call for each action. DO NOT generate multiple tool calls. DO NOT repeat the same tool call in the same response.
+* ALWAYS return the action in the format decribed above.
 </INSTRUCTIONS>
 
 <IMPORTANT>
