@@ -205,7 +205,7 @@ class Actor:
 
             task.post_message(
                 "assistant",
-                f"💭 I think: {selection.reason}",
+                f"💭 {selection.reason} \n\n 📝 {selection.scratchpad} \n\n 🎯 {selection.next_action}",
             )
             task.post_message(
                 "assistant",
