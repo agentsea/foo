@@ -291,6 +291,7 @@ def system_prompt(task: Task) -> str:
 {{\"name\": \"<function-name>\", \"arguments\": \"<args-json-object>\"}}
 </tool_call>
 
+* You need ONLY ONE tool call for each action.
 * ALWAYS return the action in the format decribed above. Make sure to include ALL tags listed above: <scratchpad>, <next_action>, <tool_call>.
 </INSTRUCTIONS>
 
