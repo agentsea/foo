@@ -4,9 +4,9 @@ from typing import Any, List, Optional
 
 from agentdesk import Desktop
 from chatmux.openai import (
-    AssistantMessage,
-    AssistantMessageContent,
-    AssistantMessageContentPart,
+    #     AssistantMessage,
+    #     AssistantMessageContent,
+    #     AssistantMessageContentPart,
     ChatRequest,
     ChatResponse,
     ImageContentPart,
@@ -51,22 +51,33 @@ class Step:
     result: Optional[str] = None
     raw_response: Optional[str] = None
     thought: Optional[str] = None
-    reason: Optional[str] = None
+    scratchpad: Optional[str] = None
+    next_action: Optional[str] = None
     in_tokens: int = 0
     out_tokens: int = 0
 
 
 class ReasonedAction(BaseModel):
-    action: V1Action
     reason: str
+    scratchpad: str
+    next_action: str
+    action: V1Action
 
 
 def parse_response(response: ChatResponse) -> List[ReasonedAction]:
     content = response.choices[0].message.content
     if content is None:
         return []
-    thought, actions = parse_action(content)
-    return [ReasonedAction(action=action, reason=thought) for action in actions]
+    parsed_action = parse_action(content)
+    return [
+        ReasonedAction(
+            action=action,
+            reason=parsed_action["thought"],
+            scratchpad=parsed_action["scratchpad"],
+            next_action=parsed_action["next_action"],
+        )
+        for action in parsed_action["actions"]
+    ]
 
 
 def build_actor_messages_raw(
@@ -90,33 +101,38 @@ def build_actor_messages_raw(
         }
     ]
 
-    for step in history:
-        messages.append(
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "What is the next action?",
-                    },
-                ],
-            }
-        )
-        messages.append(
-            {
-                "role": "assistant",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": step.raw_response or "",
-                    },
-                ],
-            }
-        )
+    # for step in history:
+    #     messages.append(
+    #         {
+    #             "role": "user",
+    #             "content": [
+    #                 {
+    #                     "type": "text",
+    #                     "text": "What is the next action?",
+    #                 },
+    #             ],
+    #         }
+    #     )
+    #     messages.append(
+    #         {
+    #             "role": "assistant",
+    #             "content": [
+    #                 {
+    #                     "type": "text",
+    #                     "text": step.raw_response or "",
+    #                 },
+    #             ],
+    #         }
+    #     )
+
     messages.append(
         {
             "role": "user",
             "content": [
+                {
+                    "type": "text",
+                    "text": f"Your scratchpad:\n\n{history[-1].scratchpad if len(history) > 0 else '[Empty]'}\n\nWhat is the next step?",
+                },
                 {
                     "type": "image_url",
                     "image_url": {"url": image_to_b64(screenshots[0])},  # type: ignore
@@ -147,40 +163,40 @@ def build_actor_messages_chatmux(
             ),
         )
     )
-    for step in history:
-        messages.append(
-            UserMessage(
-                role="user",
-                name=None,
-                content=UserMessageContent(
-                    root=[
-                        UserMessageContentPart(
-                            root=TextContentPart(
-                                type="text", text="What is the next action?"
-                            )
-                        ),
-                    ]
-                ),
-            )
-        )
-        messages.append(
-            AssistantMessage(
-                role="assistant",
-                refusal=None,
-                audio=None,
-                tool_calls=None,
-                function_call=None,
-                content=AssistantMessageContent(
-                    root=[
-                        AssistantMessageContentPart(
-                            root=TextContentPart(
-                                type="text", text=step.raw_response or ""
-                            )
-                        ),
-                    ]
-                ),
-            )
-        )
+    # for step in history:
+    #     messages.append(
+    #         UserMessage(
+    #             role="user",
+    #             name=None,
+    #             content=UserMessageContent(
+    #                 root=[
+    #                     UserMessageContentPart(
+    #                         root=TextContentPart(
+    #                             type="text", text="What is the next action?"
+    #                         )
+    #                     ),
+    #                 ]
+    #             ),
+    #         )
+    #     )
+    #     messages.append(
+    #         AssistantMessage(
+    #             role="assistant",
+    #             refusal=None,
+    #             audio=None,
+    #             tool_calls=None,
+    #             function_call=None,
+    #             content=AssistantMessageContent(
+    #                 root=[
+    #                     AssistantMessageContentPart(
+    #                         root=TextContentPart(
+    #                             type="text", text=step.raw_response or ""
+    #                         )
+    #                     ),
+    #                 ]
+    #             ),
+    #         )
+    #     )
 
     messages.append(
         UserMessage(
@@ -188,6 +204,12 @@ def build_actor_messages_chatmux(
             name=None,
             content=UserMessageContent(
                 root=[
+                    UserMessageContentPart(
+                        root=TextContentPart(
+                            type="text",
+                            text=f"Your scratchpad:\n\n{history[-1].scratchpad if len(history) > 0 else '[Empty]'}\n\nWhat is the next step?",
+                        )
+                    ),
                     UserMessageContentPart(
                         root=ImageContentPart(
                             type="image_url",
@@ -202,10 +224,22 @@ def build_actor_messages_chatmux(
 
 
 def create_actor_prompt_for_sft(
-    task: Task, reason: str, action: V1Action, image_url: str
+    task: Task,
+    reason: str,
+    scratchpad: str,
+    next_action: str,
+    action: V1Action,
+    image_url: str,
 ) -> dict[str, Any]:
     response = f"""
 {reason}
+<scratchpad>
+Steps I did so far:
+{scratchpad}
+</scratchpad>
+<next_action>
+{next_action}
+</next_action>
 <tool_call>
 {str(translate_ad_action_to_qwen_action_dict(action))}
 </tool_call>
@@ -247,14 +281,17 @@ def system_prompt(task: Task) -> str:
 <INSTRUCTIONS>
 * You are given the task and the action history with screenshots. For each new screenshot, you need to describe the current state, to consider the previous actions and screenshots, and to decide the next action. Also, describe what you expect to happen after the next action.
 * AVOID repeating the same action if it doesn't lead to the expected result.
-* Return your thoughts as plain text and the next action in the format decribed below.
-* For each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:
+* Return your thoughts as plain text at the beginning of the response.
+* Follow up with the scratchpad section: include in the scratchpad any information that is vital for your task and that you want to remember: what actions you have taken, what data you have seen, etc. Wrap the scratchpad in <scratchpad></scratchpad> XML tags.
+* Your scratchpad should be a single paragraph of text. It is passed to you as a context for your next action.
+* Follow up with a very brief description of the next action you will take, for example "Click on the 'Accept all' button", "Type 'New York' into the search bar", "Move the mouse to the 'Login' button", etc. Wrap the description in <next_action></next_action> XML tags.
+* Follow up with a corresponding function call. For a function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:
 
 <tool_call>
 {{\"name\": \"<function-name>\", \"arguments\": \"<args-json-object>\"}}
 </tool_call>
 
-* ALWAYS return the action in the format decribed above. Make sure to include the <tool_call> and </tool_call> tags.
+* ALWAYS return the action in the format decribed above. Make sure to include ALL tags listed above: <scratchpad>, <next_action>, <tool_call>.
 </INSTRUCTIONS>
 
 <IMPORTANT>
@@ -265,6 +302,12 @@ def system_prompt(task: Task) -> str:
 
 <EXAMPLE>
 I see that the cookie consent popup is visible. I need to close it by clicking on the "Accept all" button. I expect to see the cookie consent popup closed after the action.
+<scratchpad>
+I've opened the website.
+</scratchpad>
+<next_action>
+Click on the "Accept all" button.
+</next_action>
 <tool_call>
 {{\"name\": \"computer_use\", \"arguments\": {{\"action\": \"left_click\", \"coordinate\": [100, 100]}}}}
 </tool_call>

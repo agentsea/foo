@@ -16,9 +16,6 @@ from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
 from skillpacks.reviewable import AnnotationReviewable, ReviewerType
-from surfkit.agent import TaskAgent
-from surfkit.auth.util import get_user_info
-from surfkit.skill import Skill
 from taskara import Task, TaskStatus
 from taskara.server.models import V1TaskUpdate
 from tenacity import (
@@ -27,6 +24,10 @@ from tenacity import (
     stop_after_attempt,
 )
 from toolfuse.util import AgentUtils
+
+from surfkit.agent import TaskAgent
+from surfkit.auth.util import get_user_info
+from surfkit.skill import Skill
 
 from .actor import Actor
 from .actor_utils import Step, create_actor_prompt_for_sft
@@ -207,6 +208,8 @@ class Foo(TaskAgent):
         # content = Actor.get_ctx(task, device, [])
         # reason_content = Actor.get_reason_ctx(task, device, [])
         # console.print("got ctx")
+
+        scratchpad_history = ""
 
         for i, action in enumerate(task.episode.actions):
             console.print("\n\n========\naction: ", action.__dict__, "\n\n")
@@ -459,7 +462,9 @@ class Foo(TaskAgent):
             if approved:
                 oai_prompt = create_actor_prompt_for_sft(
                     task=task,
-                    reason=response_reason,
+                    reason=reason_best,
+                    scratchpad=scratchpad_history,
+                    next_action=description_best,
                     action=action.action,
                     image_url=before_state,
                 )
@@ -599,6 +604,9 @@ class Foo(TaskAgent):
             console.print("sending to description annot sft buffer...")
             # description_annot_sft_buffer.send(send_description_annot_sft)
 
+        if description_best:
+            scratchpad_history += f"✭ {description_best}\n"
+
     def solve_task(
         self,
         task: Task,
@@ -627,7 +635,7 @@ class Foo(TaskAgent):
             # Post a message to the default thread to let the user know the task is in progress
             task.post_message(
                 "assistant",
-                "My last update was 2025-06-10, around 11:30am EET.",
+                "My last update was 2025-06-16, around 11:45am EET.",
             )
             task.post_message("assistant", f"Starting task '{task.description}'")
 
@@ -797,6 +805,13 @@ class Foo(TaskAgent):
                 annotator_type=ReviewerType.AGENT.value,
             )
 
+            reviewable_2 = AnnotationReviewable(
+                key="description",
+                value=step.next_action,  # type: ignore
+                annotator=self.name(),
+                annotator_type=ReviewerType.AGENT.value,
+            )
+
             record_action_start_time = time.time()
             # Record the action for feedback and tuning
             task.record_action(
@@ -806,7 +821,7 @@ class Foo(TaskAgent):
                 result=step.result,
                 agent_id=self.name(),
                 model=step.model_id,
-                reviewables=[reviewable],
+                reviewables=[reviewable, reviewable_2],
             )
             record_action_end_time = time.time()
             console.print(

@@ -1,7 +1,7 @@
 # type: ignore
 
 import re
-from typing import Any, Tuple
+from typing import Any
 
 import json_repair
 from rich.console import Console
@@ -10,7 +10,7 @@ from skillpacks.server.models import V1Action
 console = Console()
 
 
-def parse_action(content: str) -> Tuple[str, list[V1Action]]:
+def parse_action(content: str) -> dict[str, Any]:
     """
     "action":
     * `key`: Performs key down presses on the arguments passed in order, then performs key releases in reverse order.
@@ -66,6 +66,30 @@ def parse_action(content: str) -> Tuple[str, list[V1Action]]:
     output = []
     console.print(f"Raw content: {content}")
 
+    # Extract any text before the scratchpad as thought
+    pre_scratchpad_pattern = r"^(.*?)(?=<scratchpad>)"
+    pre_scratchpad_match = re.search(pre_scratchpad_pattern, content, re.DOTALL)
+    if pre_scratchpad_match:
+        thought = pre_scratchpad_match.group(1).strip()
+    else:
+        thought = ""
+
+    # Extract scratchpad between <scratchpad> and </scratchpad> tags
+    scratchpad_pattern = r"<scratchpad>\n(.*?)\n(?:</scratchpad>)"
+    scratchpad_match = re.search(scratchpad_pattern, content, re.DOTALL)
+    if scratchpad_match:
+        scratchpad = scratchpad_match.group(1).strip()
+    else:
+        scratchpad = ""
+
+    # Extract next action between <next_action> and </next_action> tags
+    next_action_pattern = r"<next_action>\n(.*?)\n(?:</next_action>)"
+    next_action_match = re.search(next_action_pattern, content, re.DOTALL)
+    if next_action_match:
+        next_action = next_action_match.group(1).strip()
+    else:
+        next_action = ""
+
     # Extract tool calls between <tool_call> and </tool_call> tags
     tool_call_pattern = r"<tool_call>\n(.*?)\n(?:</tool_call>|📐|⚗)"
     tool_call_matches = re.findall(tool_call_pattern, content, re.DOTALL)
@@ -73,14 +97,6 @@ def parse_action(content: str) -> Tuple[str, list[V1Action]]:
     if tool_call_matches:
         for match in tool_call_matches:
             tools_used.append(match.strip())
-
-    # Extract any text before the first tool call as thought
-    pre_tool_pattern = r"^(.*?)(?=<tool_call>)"
-    pre_tool_match = re.search(pre_tool_pattern, content, re.DOTALL)
-    if pre_tool_match:
-        thought = pre_tool_match.group(1).strip()
-    else:
-        thought = ""
 
     for tool_used in tools_used:
         tool_used_json = json_repair.loads(tool_used)
@@ -147,7 +163,12 @@ def parse_action(content: str) -> Tuple[str, list[V1Action]]:
         action = V1Action(name=action_name, parameters=parameters)
         output.append(action)
 
-    return thought, output
+    return {
+        "thought": thought,
+        "scratchpad": scratchpad,
+        "next_action": next_action,
+        "actions": output,
+    }
 
 
 def translate_ad_action_to_qwen_action_dict(action: V1Action) -> dict[str, Any]:
@@ -276,6 +297,12 @@ if __name__ == "__main__":
     print("=== Example 1: key action ===")
     content_key = (
         "Thought: Let's press some keys\n"
+        "<scratchpad>\n"
+        "I've pressed ctrl+v\n"
+        "</scratchpad>\n"
+        "<next_action>\n"
+        "Pressed ctrl+c\n"
+        "</next_action>\n"
         "<tool_call>\n"
         '{"name": "computer_use", "arguments": {"action": "key", "keys": ["ctrl", "c"]}}\n'
         "</tool_call>"
@@ -288,6 +315,12 @@ if __name__ == "__main__":
     print("=== Example 2: type action ===")
     content_type = (
         "Thought: I'll type some text\n"
+        "<scratchpad>\n"
+        "I'll type Hello World\n"
+        "</scratchpad>\n"
+        "<next_action>\n"
+        "I've typed Hello World\n"
+        "</next_action>\n"
         "<tool_call>\n"
         '{"name": "computer_use", "arguments": {"action": "type", "text": "Hello World"}}\n'
         "</tool_call>"
@@ -300,6 +333,12 @@ if __name__ == "__main__":
     print("=== Example 3: mouse move action ===")
     content_move = (
         "Thought: Moving the mouse\n"
+        "<scratchpad>\n"
+        "I'll move the mouse to (100, 200)\n"
+        "</scratchpad>\n"
+        "<next_action>\n"
+        "I've moved the mouse to (100, 200)\n"
+        "</next_action>\n"
         "<tool_call>\n"
         '{"name": "computer_use", "arguments": {"action": "mouse_move", "coordinate": [100, 200]}}\n'
         "</tool_call>"
@@ -312,6 +351,12 @@ if __name__ == "__main__":
     print("=== Example 4: left click action ===")
     content_click = (
         "Thought: Let's click something\n"
+        "<scratchpad>\n"
+        "I'll click the left mouse button\n"
+        "</scratchpad>\n"
+        "<next_action>\n"
+        "I've clicked the left mouse button\n"
+        "</next_action>\n"
         "<tool_call>\n"
         '{"name": "computer_use", "arguments": {"action": "left_click"}}\n'
         "</tool_call>"
@@ -324,6 +369,12 @@ if __name__ == "__main__":
     print("=== Example 5: drag action ===")
     content_drag = (
         "Thought: I'm dragging something\n"
+        "<scratchpad>\n"
+        "I'll drag the mouse to (300, 400)\n"
+        "</scratchpad>\n"
+        "<next_action>\n"
+        "I've dragged the mouse to (300, 400)\n"
+        "</next_action>\n"
         "<tool_call>\n"
         '{"name": "computer_use", "arguments": {"action": "left_click_drag", "coordinate": [300, 400]}}\n'
         "</tool_call>"
@@ -336,6 +387,12 @@ if __name__ == "__main__":
     print("=== Example 6: right click action ===")
     content_right = (
         "Thought: Right clicking\n"
+        "<scratchpad>\n"
+        "I'll click the right mouse button\n"
+        "</scratchpad>\n"
+        "<next_action>\n"
+        "I've clicked the right mouse button\n"
+        "</next_action>\n"
         "<tool_call>\n"
         '{"name": "computer_use", "arguments": {"action": "right_click"}}\n'
         "</tool_call>"
@@ -348,6 +405,12 @@ if __name__ == "__main__":
     print("=== Example 7: middle click action ===")
     content_middle = (
         "Thought: Middle clicking\n"
+        "<scratchpad>\n"
+        "I'll click the middle mouse button\n"
+        "</scratchpad>\n"
+        "<next_action>\n"
+        "I've clicked the middle mouse button\n"
+        "</next_action>\n"
         "<tool_call>\n"
         '{"name": "computer_use", "arguments": {"action": "middle_click"}}\n'
         "</tool_call>"
@@ -360,6 +423,12 @@ if __name__ == "__main__":
     print("=== Example 8: double click action ===")
     content_double = (
         "Thought: Double clicking\n"
+        "<scratchpad>\n"
+        "I'll double click the left mouse button\n"
+        "</scratchpad>\n"
+        "<next_action>\n"
+        "I've double clicked the left mouse button\n"
+        "</next_action>\n"
         "<tool_call>\n"
         '{"name": "computer_use", "arguments": {"action": "double_click"}}\n'
         "</tool_call>"
@@ -372,6 +441,12 @@ if __name__ == "__main__":
     print("=== Example 9: scroll action ===")
     content_scroll = (
         "Thought: Scrolling down\n"
+        "<scratchpad>\n"
+        "I'll scroll down\n"
+        "</scratchpad>\n"
+        "<next_action>\n"
+        "I've scrolled down\n"
+        "</next_action>\n"
         "<tool_call>\n"
         '{"name": "computer_use", "arguments": {"action": "scroll", "pixels": -30}}\n'
         "</tool_call>"
@@ -384,6 +459,12 @@ if __name__ == "__main__":
     print("=== Example 10: wait action ===")
     content_wait = (
         "Thought: Waiting for a bit\n"
+        "<scratchpad>\n"
+        "I'll wait for 5 seconds\n"
+        "</scratchpad>\n"
+        "<next_action>\n"
+        "I've waited for 5 seconds\n"
+        "</next_action>\n"
         "<tool_call>\n"
         '{"name": "computer_use", "arguments": {"action": "wait", "time": 5}}\n'
         "</tool_call>"
@@ -396,6 +477,12 @@ if __name__ == "__main__":
     print("=== Example 11: terminate action ===")
     content_terminate = (
         "Thought: Task completed successfully\n"
+        "<scratchpad>\n"
+        "I'm done!\n"
+        "</scratchpad>\n"
+        "<next_action>\n"
+        "I'm done!\n"
+        "</next_action>\n"
         "<tool_call>\n"
         '{"name": "computer_use", "arguments": {"action": "terminate", "status": "success", "result": "I\'m done!"}}\n'
         "</tool_call>"
@@ -408,6 +495,12 @@ if __name__ == "__main__":
     print("=== Example 12: incomplete terminate action ===")
     content_terminate = (
         "Thought: Task completed successfully\n"
+        "<scratchpad>\n"
+        "I'm done!\n"
+        "</scratchpad>\n"
+        "<next_action>\n"
+        "I'm done!\n"
+        "</next_action>\n"
         "<tool_call>\n"
         '{"name": "computer_use", "arguments": {"action": "terminate", "status": "success"}}\n'
         "</tool_call>"

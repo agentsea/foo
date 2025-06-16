@@ -280,6 +280,9 @@ class Actor:
             end=end,
             result=action_response,
             raw_response=raw_response,
+            scratchpad=selection.scratchpad,
+            next_action=selection.next_action,
+            thought=selection.reason,
         )
         step_end_time = time.time()
         console.print(f"Step took {step_end_time - start_time} seconds", style="white")
