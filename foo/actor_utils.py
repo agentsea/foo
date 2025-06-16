@@ -235,7 +235,7 @@ def create_actor_prompt_for_sft(
 {reason}
 <scratchpad>
 Steps I did so far:
-{scratchpad}
+{scratchpad if scratchpad else "[Nothing]"}
 </scratchpad>
 <next_action>
 {next_action}
