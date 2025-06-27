@@ -23,7 +23,7 @@ wheels = [
 
 [[package]]
 name = "agentdesk"
-version = "0.2.124"
+version = "0.2.136"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -51,9 +51,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1a/05/bb83ce31a3c9fab650f442de09cc9e2ea49aac7c07030e95605016e8784b/agentdesk-0.2.124.tar.gz", hash = "sha256:0559991623229f30c39f81f7eed97ac926a36df0947794bbee38be9f8bfb7603", size = 51627, upload-time = "2025-04-25T05:11:46.138Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/31/4ee7a1bd6f946b837f3b8e1eab3a11453c72ad4d167ee81a5a9ee75b1c23/agentdesk-0.2.136.tar.gz", hash = "sha256:cccf59ad0e28875aa2e6735bc5754bc3ae6109c93945ead59a48d7c8f9d06823", size = 52802, upload-time = "2025-06-26T22:55:15.581Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4f/02/9fcd25a32bca1e81d0a61e0f57853df564f270c356e792cce339c9a3e7de/agentdesk-0.2.124-py3-none-any.whl", hash = "sha256:9f5c4cb30ba8ebf46ad02f044dd317930101d783200a49f90f96d4a446793fef", size = 66243, upload-time = "2025-04-25T05:11:44.906Z" },
+    { url = "https://files.pythonhosted.org/packages/c0/dd/1b8cef1c04aa1ecdabc7a62d870aaf734278c075bb57a46f963f1372935c/agentdesk-0.2.136-py3-none-any.whl", hash = "sha256:8356e10501109090e27f0908be4a207f0a64746963673723a694b51a34d232e2", size = 67146, upload-time = "2025-06-26T22:55:14.153Z" },
 ]
 
 [[package]]
@@ -933,7 +933,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.6.3" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "sqlalchemy", specifier = ">=2.0.27" },
-    { name = "surfkit", specifier = "==0.1.410" },
+    { name = "surfkit", specifier = "==0.1.427" },
     { name = "typer", specifier = ">=0.9.4" },
     { name = "uvicorn", specifier = ">=0.34.2" },
 ]
@@ -3045,7 +3045,7 @@ wheels = [
 
 [[package]]
 name = "skillpacks"
-version = "0.1.125"
+version = "0.1.128"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "devicebay" },
@@ -3054,9 +3054,9 @@ dependencies = [
     { name = "shortuuid" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a8/38/2203c00ea7a702fb26388bb8e5876bd7fd6b034e60156750b658750a149b/skillpacks-0.1.125.tar.gz", hash = "sha256:b6a22813d0e99774377b8991221a7b11e1e5f9dcb3fc00389fbebe0c98f65297", size = 44426, upload-time = "2025-04-18T20:41:44.566Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/95/f624b491d57f6ce633522be2172e8d616f24c8080f7ddd179700364decfe/skillpacks-0.1.128.tar.gz", hash = "sha256:80a54390002bf81337e60b089921f985125c374ba374bc73a2144fc1eca148ec", size = 44405, upload-time = "2025-05-29T19:53:57.462Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/e4/ea02d6152af7f40cdce11eb1e455fd0f715ffbcb043156e29f9178f27283/skillpacks-0.1.125-py3-none-any.whl", hash = "sha256:b2c0bad21a351ab3c2842c1eea956aa2b0dbca53fe49de758abc70717c4a4d95", size = 56886, upload-time = "2025-04-18T20:41:43.487Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/c3/66cdeb7cca288f81e546fe304da361feb235a8ca30bd3b2ee890930dc232/skillpacks-0.1.128-py3-none-any.whl", hash = "sha256:a0ce4e7cceacc53fd17e7b4136d064fb655e0e366e4520c5a49d0e76205d8ea1", size = 57216, upload-time = "2025-05-29T19:53:56.014Z" },
 ]
 
 [[package]]
@@ -3133,7 +3133,7 @@ wheels = [
 
 [[package]]
 name = "surfkit"
-version = "0.1.410"
+version = "0.1.427"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "agentcore" },
@@ -3150,9 +3150,9 @@ dependencies = [
     { name = "toolfuse" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ff/65/bbac371a25b1d1d12bedb70d103091de6be74177a7b7687b88121ea38b38/surfkit-0.1.410.tar.gz", hash = "sha256:dd00f192d1fdfc04fa9ba0349ba6555737e54e2131e122ce96444bfaf241a7b4", size = 80624, upload-time = "2025-05-02T16:06:14.221Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/a9/24145fa8de4eb35ca54ff9a0c84b68abc600b161769e25bea60f8c5db4ed/surfkit-0.1.427.tar.gz", hash = "sha256:a428563b27efa6b93eb8a42e1fe6ed471956bee73a7ec74d8231fc22e717210f", size = 80261, upload-time = "2025-06-26T22:58:01.094Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c8/46/c388cf4542167c1d6b92ca473b767efd165958971f2670a629f7b6992af8/surfkit-0.1.410-py3-none-any.whl", hash = "sha256:f0741c7d8d2e43338ba1e1aeefa66083d1726be1b5a6b7f88fb0775c011cd822", size = 96462, upload-time = "2025-05-02T16:06:12.514Z" },
+    { url = "https://files.pythonhosted.org/packages/00/29/43e15448ed92d0ed16adf28053e21b64fb41c59dda79cffca6258d013578/surfkit-0.1.427-py3-none-any.whl", hash = "sha256:21588b991a15c8cd849d01dce35ec3679f29ddcf1625acb866562742da7f9b94", size = 96359, upload-time = "2025-06-26T22:57:59.161Z" },
 ]
 
 [[package]]
@@ -3166,7 +3166,7 @@ wheels = [
 
 [[package]]
 name = "taskara"
-version = "0.1.238"
+version = "0.1.249"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "agentcore" },
@@ -3180,9 +3180,9 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/35/8d/1e1906fd3c390f2673b638982336188b6ce1d219480c850b23c72ebd273d/taskara-0.1.238.tar.gz", hash = "sha256:419628740aad4b909bb44aa1caf1d4131ea8e936efa25de8b7e2511518bff14a", size = 57156, upload-time = "2025-04-21T19:00:18.439Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/42/83/867be6c20de7cd0ace39381dc72231a1409666a88175d02061b3e4ceb758/taskara-0.1.249.tar.gz", hash = "sha256:be097d714f565c324109466472f7609438d6a1cc8ba6c2079629a0c687934acf", size = 57927, upload-time = "2025-06-25T01:42:09.316Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/29/62/866df5b0480ba3e2d47256836268c15952f3427284bd900642c9829364dc/taskara-0.1.238-py3-none-any.whl", hash = "sha256:5087833af82e94a100fb5370416587c04906e922ebadd07437950a325e609a79", size = 67652, upload-time = "2025-04-21T19:00:15.156Z" },
+    { url = "https://files.pythonhosted.org/packages/54/a0/4d2b3a0b1a276fa4f90a2c1fe634526b3e54061779555187d0a02184c949/taskara-0.1.249-py3-none-any.whl", hash = "sha256:8b81614a3ff5872aae1dfbdefaaa5f7604db36bdf88892c3af58577543313d34", size = 68461, upload-time = "2025-06-25T01:42:07.678Z" },
 ]
 
 [[package]]

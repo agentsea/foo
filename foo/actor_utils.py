@@ -367,6 +367,7 @@ def tools_list() -> str:
                              "* `middle_click`: Click the middle mouse button.\n"
                              "* `double_click`: Double-click the left mouse button.\n"
                              "* `scroll`: Performs a scroll of the mouse scroll wheel.\n"
+                             "* `use_secret`: Use a secret.\n"
                              "* `wait`: Wait specified seconds for the change to happen.\n"
                              "* `terminate`: Terminate the current task and report its completion status.",
                 "enum": ["key", "type", "mouse_move", "left_click", "left_click_drag", "right_click", 
@@ -390,6 +391,14 @@ def tools_list() -> str:
                 "description": "The amount of scrolling to perform. Positive values scroll up, negative values scroll down. "
                              "Required only by `action=scroll`.",
                 "type": "number"
+            },
+            "name": {
+                "description": "The name of the secret to use. Required only by `action=use_secret`.",
+                "type": "string"
+            },
+            "field": {
+                "description": "The field of the secret to use. Required only by `action=use_secret`.",
+                "type": "string"
             },
             "time": {
                 "description": "The seconds to wait. Required only by `action=wait`.",

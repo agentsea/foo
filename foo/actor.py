@@ -236,6 +236,9 @@ class Actor:
             task.save()
             end = True
 
+        if selection.action.name == "use_secret":
+            selection.action.parameters["secret_server"] = os.getenv("SERVER_ADDRESS")
+
         # Find the selected action in the tool
         action = device.find_action(selection.action.name)
         console.print(f"found action: {action}", style="blue")

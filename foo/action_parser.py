@@ -61,6 +61,9 @@ def parse_action(content: str) -> dict[str, Any]:
         <tool_call>
         {"name": "computer_use", "arguments": {"action": "left_click", "coordinate": [1240, 783]}}
         </tool_call>
+
+    Extra actions:
+    * `use_secret`: Use a secret. Parameters: `name`, `field`.
     """
 
     output = []
@@ -146,6 +149,10 @@ def parse_action(content: str) -> dict[str, Any]:
         elif action_name == "scroll":
             action_name = "scroll"
             parameters["clicks"] = tool_used_json["arguments"]["pixels"] // 10
+        elif action_name == "use_secret":
+            action_name = "use_secret"
+            parameters["name"] = tool_used_json["arguments"]["name"]
+            parameters["field"] = tool_used_json["arguments"]["field"]
         elif action_name == "wait":
             action_name = "wait"
             parameters["seconds"] = tool_used_json["arguments"]["time"]
@@ -249,6 +256,15 @@ def translate_ad_action_to_qwen_action_dict(action: V1Action) -> dict[str, Any]:
             "arguments": {
                 "action": "scroll",
                 "pixels": parameters["clicks"] * 10,
+            },
+        }
+    elif name == "use_secret":
+        return {
+            "name": "computer_use",
+            "arguments": {
+                "action": "use_secret",
+                "name": parameters["name"],
+                "field": parameters["field"],
             },
         }
     elif name == "wait":
