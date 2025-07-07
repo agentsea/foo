@@ -78,12 +78,12 @@ def parse_action(content: str) -> dict[str, Any]:
         thought = ""
 
     # Extract scratchpad between <scratchpad> and </scratchpad> tags
-    scratchpad_pattern = r"<scratchpad>\n(.*?)\n(?:</scratchpad>)"
-    scratchpad_match = re.search(scratchpad_pattern, content, re.DOTALL)
-    if scratchpad_match:
-        scratchpad = scratchpad_match.group(1).strip()
+    note_pattern = r"<note>\n(.*?)\n(?:</note>)"
+    note_match = re.search(note_pattern, content, re.DOTALL)
+    if note_match:
+        note = note_match.group(1).strip()
     else:
-        scratchpad = ""
+        note = ""
 
     # Extract next action between <next_action> and </next_action> tags
     next_action_pattern = r"<next_action>\n(.*?)\n(?:</next_action>)"
@@ -172,8 +172,8 @@ def parse_action(content: str) -> dict[str, Any]:
 
     return {
         "thought": thought,
-        "scratchpad": scratchpad,
-        "next_action": next_action,
+        "note": note,
+        "description": next_action,
         "actions": output,
     }
 

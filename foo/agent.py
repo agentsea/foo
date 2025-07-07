@@ -209,7 +209,8 @@ class Foo(TaskAgent):
         # reason_content = Actor.get_reason_ctx(task, device, [])
         # console.print("got ctx")
 
-        scratchpad_history = ""
+        descriptions_history = []
+        notes_history = []
 
         for i, action in enumerate(task.episode.actions):
             console.print("\n\n========\naction: ", action.__dict__, "\n\n")
@@ -248,6 +249,10 @@ class Foo(TaskAgent):
             reason = None
             reason_update = None
             reason_best = None
+
+            note = None
+            note_update = None
+            note_best = None
 
             validation = None
             validation_update = None
@@ -324,16 +329,36 @@ class Foo(TaskAgent):
                                     description_update = review.correction
                                     description_best = description_update
                                 break
+                    elif reviewable.key == "note":
+                        note = reviewable.value
+                        note_best = note
+                        for review in reviewable.reviews:
+                            console.print("\nnote review: ", review.to_v1().model_dump())
+                            if review.correction and review.reviewer_type in [
+                                "human",
+                                "user",
+                            ]:
+                                console.print("\nnote correction: ", review.correction)
+                                if isinstance(review.correction, dict):
+                                    note_update = review.correction["value"]  # type: ignore
+                                    note_best = note_update
+                                else:
+                                    note_update = review.correction
+                                    note_best = note_update
+                                break
 
             console.print("\nreason: ", reason)
+            console.print("\nnote: ", note)
             console.print("\nvalidation: ", validation)
             console.print("\ndescription: ", description)
 
             console.print("\nreason_update: ", reason_update)
+            console.print("\nnote_update: ", note_update)
             console.print("\nvalidation_update: ", validation_update)
             console.print("\ndescription_update: ", description_update)
 
             console.print("\nreason_best: ", reason_best)
+            console.print("\nnote_best: ", note_best)
             console.print("\nvalidation_best: ", validation_best)
             console.print("\ndescription_best: ", description_best)
 
@@ -463,16 +488,21 @@ class Foo(TaskAgent):
                 action.action.parameters["secret_server"] = None
 
             if approved:
+                descriptions_history.append(description_best)
+                notes_history.append(note_best)
+
                 console.print(
-                    f"creating actor prompt for sft with scratchpad = {scratchpad_history}, reason = {reason_best}, description = {description_best}, action = {action.action}"
+                    f"creating actor prompt for sft with descriptions = {descriptions_history}, notes = {notes_history}, reason = {reason_best}, description = {description_best}, action = {action.action}"
                 )
                 oai_prompt = create_actor_prompt_for_sft(
                     task=task,
                     reason=reason_best,
-                    scratchpad=scratchpad_history,
-                    next_action=description_best,
+                    description=description_best,
+                    note=note_best,
                     action=action.action,
                     image_url=before_state,
+                    descriptions=descriptions_history,
+                    notes=notes_history,
                 )
 
                 # response = (
@@ -556,12 +586,6 @@ class Foo(TaskAgent):
                     val_ctx_reason_oai_prompt_copy = val_ctx_reason_oai_prompt.copy()
                     val_ctx_reason_oai_prompt_copy["rejected_response"] = validation  # type: ignore
                     # send_val_dpo.append(val_ctx_reason_oai_prompt_copy)
-
-            if description_best:
-                scratchpad_history += f"✭ {description_best}\n"
-                console.print(
-                    f"adding to scratchpad: {description_best}; scratchpad = {scratchpad_history}"
-                )
 
         if send_val_sft:
             console.print("sending to val sft buffer...")
@@ -800,23 +824,30 @@ class Foo(TaskAgent):
             console.print("taking action...", style="white")
             action_start_time = time.time()
 
-            step = actor.act(task, device, history)  # type: ignore
+            step = actor.act(task, device, history) 
             action_end_time = time.time()
             console.print(
                 f"Actor took {action_end_time - action_start_time} seconds",
                 style="white",
             )
 
-            reviewable = AnnotationReviewable(
+            reviewable_reason = AnnotationReviewable(
                 key="reason",
-                value=step.reason,  # type: ignore
+                value=step.reason,
                 annotator=self.name(),
                 annotator_type=ReviewerType.AGENT.value,
             )
 
-            reviewable_2 = AnnotationReviewable(
+            reviewable_description = AnnotationReviewable(
                 key="description",
-                value=step.next_action,  # type: ignore
+                value=step.description,
+                annotator=self.name(),
+                annotator_type=ReviewerType.AGENT.value,
+            )
+
+            reviewable_note = AnnotationReviewable(
+                key="note",
+                value=step.note,
                 annotator=self.name(),
                 annotator_type=ReviewerType.AGENT.value,
             )
@@ -830,7 +861,7 @@ class Foo(TaskAgent):
                 result=step.result,
                 agent_id=self.name(),
                 model=step.model_id,
-                reviewables=[reviewable, reviewable_2],
+                reviewables=[reviewable_reason, reviewable_description, reviewable_note],
             )
             record_action_end_time = time.time()
             console.print(

@@ -4,9 +4,6 @@ from typing import Any, List, Optional
 
 from agentdesk import Desktop
 from chatmux.openai import (
-    #     AssistantMessage,
-    #     AssistantMessageContent,
-    #     AssistantMessageContentPart,
     ChatRequest,
     ChatResponse,
     ImageContentPart,
@@ -51,16 +48,16 @@ class Step:
     result: Optional[str] = None
     raw_response: Optional[str] = None
     thought: Optional[str] = None
-    scratchpad: Optional[str] = None
-    next_action: Optional[str] = None
+    note: Optional[str] = None
+    description: Optional[str] = None
     in_tokens: int = 0
     out_tokens: int = 0
 
 
 class ReasonedAction(BaseModel):
     reason: str
-    scratchpad: str
-    next_action: str
+    note: str
+    description: str
     action: V1Action
 
 
@@ -73,12 +70,21 @@ def parse_response(response: ChatResponse) -> List[ReasonedAction]:
         ReasonedAction(
             action=action,
             reason=parsed_action["thought"],
-            scratchpad=parsed_action["scratchpad"],
-            next_action=parsed_action["next_action"],
+            description=parsed_action["description"],
+            note=parsed_action["note"],
         )
         for action in parsed_action["actions"]
     ]
 
+def build_scratchpad(descriptions: List[str], notes: list[str]) -> str:
+    if len(descriptions) == 0:
+        return "[Empty]"
+    steps_str = "\n".join([f"* {description}" for description in descriptions])
+    if len(notes) > 0:
+        notes_str = "\n".join([f"* {note}" for note in notes if note != "None." or note != "None" or note != ""])
+        return f"Steps I did so far:\n{steps_str}\nMy notes:\n{notes_str}\n"
+    else:
+        return f"Steps I did so far:\n{steps_str}\n"
 
 def build_actor_messages_raw(
     task: Task, device: Desktop, history: List[Step]
@@ -101,37 +107,16 @@ def build_actor_messages_raw(
         }
     ]
 
-    # for step in history:
-    #     messages.append(
-    #         {
-    #             "role": "user",
-    #             "content": [
-    #                 {
-    #                     "type": "text",
-    #                     "text": "What is the next action?",
-    #                 },
-    #             ],
-    #         }
-    #     )
-    #     messages.append(
-    #         {
-    #             "role": "assistant",
-    #             "content": [
-    #                 {
-    #                     "type": "text",
-    #                     "text": step.raw_response or "",
-    #                 },
-    #             ],
-    #         }
-    #     )
-
+    descriptions = [step.description for step in history if step.description is not None]
+    notes = [step.note for step in history if step.note is not None]
+    scratchpad = build_scratchpad(descriptions, notes)
     messages.append(
         {
             "role": "user",
             "content": [
                 {
                     "type": "text",
-                    "text": f"Your scratchpad:\n\n{history[-1].scratchpad if len(history) > 0 else '[Empty]'}\n\nWhat is the next step?",
+                    "text": f"Your scratchpad:\n\n{scratchpad}\n\nWhat is the next step?",
                 },
                 {
                     "type": "image_url",
@@ -163,41 +148,10 @@ def build_actor_messages_chatmux(
             ),
         )
     )
-    # for step in history:
-    #     messages.append(
-    #         UserMessage(
-    #             role="user",
-    #             name=None,
-    #             content=UserMessageContent(
-    #                 root=[
-    #                     UserMessageContentPart(
-    #                         root=TextContentPart(
-    #                             type="text", text="What is the next action?"
-    #                         )
-    #                     ),
-    #                 ]
-    #             ),
-    #         )
-    #     )
-    #     messages.append(
-    #         AssistantMessage(
-    #             role="assistant",
-    #             refusal=None,
-    #             audio=None,
-    #             tool_calls=None,
-    #             function_call=None,
-    #             content=AssistantMessageContent(
-    #                 root=[
-    #                     AssistantMessageContentPart(
-    #                         root=TextContentPart(
-    #                             type="text", text=step.raw_response or ""
-    #                         )
-    #                     ),
-    #                 ]
-    #             ),
-    #         )
-    #     )
 
+    descriptions = [step.description for step in history if step.description is not None]
+    notes = [step.note for step in history if step.note is not None]
+    scratchpad = build_scratchpad(descriptions, notes)
     messages.append(
         UserMessage(
             role="user",
@@ -207,7 +161,7 @@ def build_actor_messages_chatmux(
                     UserMessageContentPart(
                         root=TextContentPart(
                             type="text",
-                            text=f"Your scratchpad:\n\n{history[-1].scratchpad if len(history) > 0 else '[Empty]'}\n\nWhat is the next step?",
+                            text=f"Your scratchpad:\n\n{scratchpad}\n\nWhat is the next step?",
                         )
                     ),
                     UserMessageContentPart(
@@ -222,31 +176,26 @@ def build_actor_messages_chatmux(
     )
     return messages
 
-
+#TODO: REBUILD THIS!!!
 def create_actor_prompt_for_sft(
     task: Task,
     reason: str,
-    scratchpad: str,
-    next_action: str,
+    description: str,
+    note: str,
     action: V1Action,
     image_url: str,
+    descriptions_history: List[str],
+    notes_history: List[str],
 ) -> dict[str, Any]:
-    if scratchpad:
-        old_scratchpad_text = f"Steps I did so far:\n{scratchpad}"
-        new_scratchpad_text = (
-            f"Steps I did so far:\n{scratchpad}\n\nThe next one is: {next_action}"
-        )
-    else:
-        old_scratchpad_text = "[Empty]"
-        new_scratchpad_text = f"The next one is: {next_action}"
+    scratchpad = build_scratchpad(descriptions_history, notes_history)
 
     response = f"""
 {reason}
-<scratchpad>
-{new_scratchpad_text}
-</scratchpad>
+<note>
+{note}
+</note>
 <next_action>
-{next_action}
+{description}
 </next_action>
 <tool_call>
 {str(translate_ad_action_to_qwen_action_dict(action))}
@@ -265,7 +214,7 @@ def create_actor_prompt_for_sft(
             "content": [
                 {
                     "type": "text",
-                    "text": f"Your scratchpad:\n\n{old_scratchpad_text}\n\nWhat is the next step?",
+                    "text": f"Your scratchpad:\n\n{scratchpad}\n\nWhat is the next step?",
                 },
                 {"type": "image_url", "image_url": {"url": image_url}},
             ],
@@ -295,12 +244,13 @@ def system_prompt(task: Task) -> str:
 </TASK>
 
 <INSTRUCTIONS>
-* You are given the task, your scratchpad, and the screenshot of the current state. 
+* You are given the task, your scratchpad (your notes and previously taken actions), and the screenshot of the current state. 
 * You need to describe the current state, to consider the notes in your scratchpad, and to decide the next action. Also, describe what you expect to happen after the next action.
 * Return your thoughts as plain text at the beginning of the response.
-* Follow up with the scratchpad section: include in the scratchpad any information that is vital for your task and that you want to remember: what actions you have taken, what data you have seen, etc. 
-* Your scratchpad should be a single paragraph of text. It is passed to you as a context for your next action.
-* Wrap the scratchpad in <scratchpad></scratchpad> XML tags.
+* Follow up with the note section: include in the note any information that is vital for your task and that you want to remember, for example, the information you were looking for and see on a screen now, contract information, etc. 
+* Your note should not exceed one paragraph. 
+* If there is nothing on the screen that you want to remember, just return 'None.' in the note section.
+* Wrap the note in <note></note> XML tags.
 * Follow up with a very brief description of the next action you will take, for example "Click on the 'Accept all' button", "Type 'New York' into the search bar", "Move the mouse to the 'Login' button", etc. 
 * Wrap the description of the next action in <next_action></next_action> XML tags.
 * Follow up with ONE corresponding function call. For a function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:
@@ -317,15 +267,16 @@ def system_prompt(task: Task) -> str:
 * You are given the task and the action history with the current state screenshot. For each new screenshot, you need to describe the current state, to consider the previous actions, and to decide the next action. 
 * When you open Google and see a cookie consent popup, click on the "Accept all" button (in any language). If the button is not visible, scroll down until you see it. Before scrolling, move the mouse closer to the header of the cookie consent popup.
 * ALWAYS close the cookie consent popup on ANY website where you see it before continuing.
+* You have a special action called `use_secret`. Use it to get the secret from the secret manager. You can ONLY use it when you are explicitly asked to do so. When you use it, you need to pass the name of the secret and the field of the secret. If you don't know the name of the field, you can use 'password' as the field.
 </IMPORTANT>
 
 <EXAMPLE>
-I see that the cookie consent popup is visible. I need to close it by clicking on the "Accept all" button. I expect to see the cookie consent popup closed after the action.
-<scratchpad>
-I've opened the website.
-</scratchpad>
+I see that the population of Finland is 5.5 million. I need to close the browser now. I expect to see browser closed after the action.
+<note>
+The population of Finland is 5.5 million.
+</note>
 <next_action>
-Click on the "Accept all" button.
+Close the browser.
 </next_action>
 <tool_call>
 {{\"name\": \"computer_use\", \"arguments\": {{\"action\": \"left_click\", \"coordinate\": [100, 100]}}}}
