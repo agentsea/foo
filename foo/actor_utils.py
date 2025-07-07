@@ -176,7 +176,6 @@ def build_actor_messages_chatmux(
     )
     return messages
 
-#TODO: REBUILD THIS!!!
 def create_actor_prompt_for_sft(
     task: Task,
     reason: str,

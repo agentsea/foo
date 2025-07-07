@@ -1,5 +1,3 @@
-# type: ignore
-
 import logging
 import os
 import time
@@ -496,13 +494,13 @@ class Foo(TaskAgent):
                 )
                 oai_prompt = create_actor_prompt_for_sft(
                     task=task,
-                    reason=reason_best,
-                    description=description_best,
-                    note=note_best,
+                    reason=reason_best or "",
+                    description=description_best or "",
+                    note=note_best or "",
                     action=action.action,
                     image_url=before_state,
-                    descriptions=descriptions_history,
-                    notes=notes_history,
+                    descriptions_history=descriptions_history,
+                    notes_history=notes_history,
                 )
 
                 # response = (
@@ -824,7 +822,7 @@ class Foo(TaskAgent):
             console.print("taking action...", style="white")
             action_start_time = time.time()
 
-            step = actor.act(task, device, history) 
+            step = actor.act(task, device, history) # type: ignore
             action_end_time = time.time()
             console.print(
                 f"Actor took {action_end_time - action_start_time} seconds",
@@ -833,21 +831,21 @@ class Foo(TaskAgent):
 
             reviewable_reason = AnnotationReviewable(
                 key="reason",
-                value=step.reason,
+                value=step.reason or "",
                 annotator=self.name(),
                 annotator_type=ReviewerType.AGENT.value,
             )
 
             reviewable_description = AnnotationReviewable(
                 key="description",
-                value=step.description,
+                value=step.description or "",
                 annotator=self.name(),
                 annotator_type=ReviewerType.AGENT.value,
             )
 
             reviewable_note = AnnotationReviewable(
                 key="note",
-                value=step.note,
+                value=step.note or "",
                 annotator=self.name(),
                 annotator_type=ReviewerType.AGENT.value,
             )
