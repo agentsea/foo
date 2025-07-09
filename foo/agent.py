@@ -488,9 +488,6 @@ class Foo(TaskAgent):
                 action.action.parameters["secret_server"] = None
 
             if approved:
-                descriptions_history.append(description_best)
-                notes_history.append(note_best)
-
                 console.print(
                     f"creating actor prompt for sft with descriptions = {descriptions_history}, notes = {notes_history}, reason = {reason_best}, description = {description_best}, action = {action.action}"
                 )
@@ -504,7 +501,8 @@ class Foo(TaskAgent):
                     descriptions_history=descriptions_history,
                     notes_history=notes_history,
                 )
-
+                descriptions_history.append(description_best)
+                notes_history.append(note_best)
                 # response = (
                 #     f"<think>{response_reason}</think><answer>{action_str}</answer>"
                 # )
@@ -668,7 +666,7 @@ class Foo(TaskAgent):
             # Post a message to the default thread to let the user know the task is in progress
             task.post_message(
                 "assistant",
-                "My last update was 2025-06-27, around 6:30pm EET.",
+                "My last update was 2025-07-09, around 2:30pm EET.",
             )
             task.post_message("assistant", f"Starting task '{task.description}'")
 
