@@ -82,9 +82,9 @@ def build_scratchpad(descriptions: List[str], notes: list[str]) -> str:
     steps_str = "\n".join([f"* {description}" for description in descriptions])
     if len(notes) > 0:
         notes_str = "\n".join([f"* {note}" for note in notes if note != "None." or note != "None" or note != ""])
-        return f"Steps I did so far:\n{steps_str}\nMy notes:\n{notes_str}\n"
+        return f"Steps you did so far:\n{steps_str}\nYour notes:\n{notes_str}\n"
     else:
-        return f"Steps I did so far:\n{steps_str}\n"
+        return f"Steps you did so far:\n{steps_str}\n"
 
 def build_actor_messages_raw(
     task: Task, device: Desktop, history: List[Step]
