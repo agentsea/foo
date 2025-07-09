@@ -210,7 +210,9 @@ class Foo(TaskAgent):
         descriptions_history = []
         notes_history = []
 
-        for i, action in enumerate(task.episode.actions):
+        sorted_actions = sorted(task.episode.actions, key=lambda x: x.event_order or 0)
+
+        for i, action in enumerate(sorted_actions):
             console.print("\n\n========\naction: ", action.__dict__, "\n\n")
 
             approved = False
