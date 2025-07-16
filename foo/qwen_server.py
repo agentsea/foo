@@ -39,7 +39,7 @@ pip install -e git+https://github.com/pbarker/unsloth-zoo.git#egg=unsloth_zoo
 pip install -e git+https://github.com/pbarker/unsloth.git#egg=unsloth
 """
 
-BASE_MODEL_ID = os.getenv("BASE_MODEL_ID", "unsloth/Qwen2.5-VL-32B-Instruct")
+BASE_MODEL_ID = "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights"
 MAX_LOADED_ADAPTERS = 4
 
 # --- LRU Disk Cache Management (Copied and Adapted from unsloth_trainer.py) ---
