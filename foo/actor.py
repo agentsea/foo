@@ -65,7 +65,7 @@ class Actor:
             console.print(
                 f"\n>>>> Adapter {adapter_name} not found, using default", style="red"
             )
-            self.adapter_name = "unsloth/Qwen2.5-VL-32B-Instruct"  # TODO
+            self.adapter_name = "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights"
 
     def act(self, task: Task, device: Desktop, history: List[Step]) -> Step:
         start_time = time.time()

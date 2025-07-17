@@ -1204,7 +1204,7 @@ def infer_qwen_vl(
 def QwenVLServer(
     platform: str = "runpod",
     accelerators: List[str] = ["1:A100_SXM"],
-    model: str = "unsloth/Qwen2.5-VL-32B-Instruct",
+    model: str = "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights",
     image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-server:8b0ee04",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-infer:latest"
     namespace: Optional[str] = None,
     env: Optional[List[V1EnvVar]] = None,
