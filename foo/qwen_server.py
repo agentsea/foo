@@ -39,7 +39,7 @@ pip install -e git+https://github.com/pbarker/unsloth-zoo.git#egg=unsloth_zoo
 pip install -e git+https://github.com/pbarker/unsloth.git#egg=unsloth
 """
 
-BASE_MODEL_ID = "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights"
+BASE_MODEL_ID = "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights4"
 MAX_LOADED_ADAPTERS = 4
 
 # --- LRU Disk Cache Management (Copied and Adapted from unsloth_trainer.py) ---
@@ -472,38 +472,43 @@ def init():
         loaded_adapter_names_lru: collections.deque
         max_loaded_adapters: int
 
-    print("loading model...")
-    print("--- nvidia-smi before load ---")
-    os.system("nvidia-smi")
-    print("--- end nvidia-smi before load ---")
-    time_start_load = time.time()
-    base_model, model_processor = FastVisionModel.from_pretrained(
-        BASE_MODEL_ID,
-        load_in_4bit=False,
-        # use_fast=True,
-        dtype=torch.bfloat16,
-        max_seq_length=32_768,
-    )
-    print(f"Loaded model in {time.time() - time_start_load} seconds")
-    print("--- nvidia-smi after load ---")
-    os.system("nvidia-smi")
-    print("--- end nvidia-smi after load ---")
+    try:
+        print("loading model...")
+        print("--- nvidia-smi before load ---")
+        os.system("nvidia-smi")
+        print("--- end nvidia-smi before load ---")
+        time_start_load = time.time()
+        base_model, model_processor = FastVisionModel.from_pretrained(
+            BASE_MODEL_ID,
+            load_in_4bit=False,
+            # use_fast=True,
+            dtype=torch.bfloat16,
+            max_seq_length=32_768,
+        )
+        print(f"Loaded model in {time.time() - time_start_load} seconds")
+        print("--- nvidia-smi after load ---")
+        os.system("nvidia-smi")
+        print("--- end nvidia-smi after load ---")
 
-    global state
-    state = InferenceState(
-        base_model=base_model,
-        model_processor=model_processor,
-        base_model_id=BASE_MODEL_ID,
-        adapters=[],
-        cache=Cache(),
-        loaded_adapter_names_lru=collections.deque(maxlen=MAX_LOADED_ADAPTERS),
-        max_loaded_adapters=MAX_LOADED_ADAPTERS,
-    )
+        global state
+        state = InferenceState(
+            base_model=base_model,
+            model_processor=model_processor,
+            base_model_id=BASE_MODEL_ID,
+            adapters=[],
+            cache=Cache(),
+            loaded_adapter_names_lru=collections.deque(maxlen=MAX_LOADED_ADAPTERS),
+            max_loaded_adapters=MAX_LOADED_ADAPTERS,
+        )
 
-    # --- LRU Disk Cache Init ---
-    _load_lru_metadata()
-    _ensure_storage_limits()  # Perform initial cleanup if needed
-    # --- End LRU Disk Cache Init ---
+        # --- LRU Disk Cache Init ---
+        _load_lru_metadata()
+        _ensure_storage_limits()  # Perform initial cleanup if needed
+        # --- End LRU Disk Cache Init ---
+
+    except Exception as e:
+        print(f"[Smart Inference] Error during init: {e}")
+        raise e
 
 
 def smart_adapter_loading_for_inference(
@@ -1204,7 +1209,7 @@ def infer_qwen_vl(
 def QwenVLServer(
     platform: str = "runpod",
     accelerators: List[str] = ["1:A100_SXM"],
-    model: str = "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights",
+    model: str = "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights4",
     image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-server:8b0ee04",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-infer:latest"
     namespace: Optional[str] = None,
     env: Optional[List[V1EnvVar]] = None,
