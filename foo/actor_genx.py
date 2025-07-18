@@ -1,17 +1,29 @@
+# type: ignore
+
 import os
 import time
+
+# from dataclasses import dataclass
 from typing import List, Optional
 
 from agentdesk import Desktop
 from chatmux.openai import (
     ChatRequest,
     ChatResponse,
+    # ImageContentPart,
+    # ImageUrl,
+    # RequestMessage,
+    # TextContentPart,
+    # UserMessage,
+    # UserMessageContent,
+    # UserMessageContentPart,
 )
+from json_repair import repair_json
 from nebulous import V1EnvVar
 from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
-from skillpacks import EnvState
+from skillpacks import EnvState, V1Action
 from taskara import Task, TaskStatus
 
 from .actor_utils import (
@@ -30,6 +42,27 @@ class V1ChatEvent(BaseModel):
 
     request: ChatRequest
     response: ChatResponse
+
+
+# @dataclass
+# class Step:
+#     """A step in an episode"""
+
+#     state: EnvState
+#     action: V1Action
+#     action_opts: Optional[List[V1Action]] = None
+#     thread: Optional[List[RequestMessage]] = None
+#     task: Optional[Task] = None
+#     model_id: Optional[str] = None
+#     prompt: Optional[V1ChatEvent] = None
+#     reason: Optional[str] = None
+#     end: bool = False
+#     result: Optional[str] = None
+
+
+# class ReasonedAction(BaseModel):
+#     action: V1Action
+#     reason: str
 
 
 class Actor:
@@ -64,7 +97,7 @@ class Actor:
             console.print(
                 f"\n>>>> Adapter {adapter_name} not found, using default", style="red"
             )
-            self.adapter_name = "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights"
+            self.adapter_name = "unsloth/Qwen2.5-VL-32B-Instruct"  # TODO
 
     def act(self, task: Task, device: Desktop, history: List[Step]) -> Step:
         start_time = time.time()
@@ -77,6 +110,16 @@ class Actor:
         s0 = screenshots[0]
         gcs_url = upload_image_to_gcs(s0)
         print("gcs_url", gcs_url)
+        # s3_upload_result = upload_pil_image_to_s3(
+        #     s0, "nebulous-rs", "images/screenshots", generate_random_filename=True
+        # )
+        # print("s3_upload_result", s3_upload_result)
+        # if not s3_upload_result.success:
+        #     console.print(
+        #         f"Error uploading screenshot to S3: {s3_upload_result.error}",
+        #         style="red",
+        #     )
+        #     raise ValueError("Error uploading screenshot to S3")
 
         width, height = s0.size  # Get the dimensions of the screenshot
         console.print(f"Screenshot dimensions: {width} x {height}")
@@ -98,6 +141,27 @@ class Actor:
 
         messages = build_actor_messages_chatmux(task, history, gcs_url)
         console.print(f"created {len(messages)} messages", style="white")
+
+        # Construct messages using new models
+        # messages = [
+        #     UserMessage(
+        #         role="user",
+        #         name=None,
+        #         content=UserMessageContent(
+        #             root=[
+        #                 UserMessageContentPart(
+        #                     root=TextContentPart(type="text", text=ctx)
+        #                 ),
+        #                 UserMessageContentPart(
+        #                     root=ImageContentPart(
+        #                         type="image_url",
+        #                         image_url=ImageUrl(url=gcs_url, detail="auto"),
+        #                     )
+        #                 ),
+        #             ]
+        #         ),
+        #     )
+        # ]
 
         # Create the full request object using the new ChatRequest model
         request = ChatRequest(  # type: ignore
@@ -125,23 +189,13 @@ class Actor:
                 raise ValueError("No content found in response")
             response = ChatResponse.model_validate(content)
 
-        raw_response = None
-        try:
-            raw_response = response.choices[0].message.content
-        except Exception as e:
-            console.print(f"Error parsing response: {e}", style="red")
-            raise
-
         try:
             actions = parse_response(response)
+            # actions = self._parse_response(response)
             selection = self._select_action(actions)
             console.print("action selection: ", style="white")
             console.print(JSON.from_data(selection.model_dump()))
 
-            task.post_message(
-                "assistant",
-                f"💭 {selection.reason} \n\n 📝 {selection.note} \n\n 🎯 {selection.description}",
-            )
             task.post_message(
                 "assistant",
                 f"▶️ Taking action '{selection.action.name}' with parameters: {selection.action.parameters}",
@@ -156,23 +210,13 @@ class Actor:
         if selection.action.name == "end" or selection.action.name == "result":
             console.print("final result: ", style="green")
             console.print(JSON.from_data(selection.action.parameters))
-            result = (
-                selection.action.parameters["result"]
-                if "result" in selection.action.parameters
-                else selection.action.parameters["value"]
-                if "value" in selection.action.parameters
-                else "I'm done!"
-            )
             task.post_message(
                 "assistant",
-                f"✅ I think the task is done, please review the result: {result}",
+                f"✅ I think the task is done, please review the result: {selection.action.parameters['value']}",
             )
             task.status = TaskStatus.FINISHED
             task.save()
             end = True
-
-        if selection.action.name == "use_secret":
-            selection.action.parameters["secret_server"] = os.getenv("SERVER_ADDRESS")
 
         # Find the selected action in the tool
         action = device.find_action(selection.action.name)
@@ -200,7 +244,7 @@ class Actor:
             )
 
         if not selection.reason:
-            selection.reason = "I will do the following."
+            raise ValueError("No reason provided")
 
         event = V1ChatEvent(
             request=request,
@@ -213,19 +257,61 @@ class Actor:
             task=task,
             thread=messages,  # type: ignore
             model_id=self.adapter_name,
-            prompt=event,  # type: ignore
+            prompt=event,
             reason=selection.reason,
             end=end,
             result=action_response,
-            raw_response=raw_response,
-            note=selection.note,
-            description=selection.description,
-            thought=selection.reason,
         )
         step_end_time = time.time()
         console.print(f"Step took {step_end_time - start_time} seconds", style="white")
 
         return step
+
+    def _parse_response(self, response: ChatResponse) -> List[ReasonedAction]:
+        import re
+
+        output = []
+        for choice in response.choices:
+            # Access content from the message object within the choice using new structure
+            text = choice.message.content if choice.message else None
+
+            if not text:
+                console.print("Warning: Choice message content is empty.")
+                continue
+
+            console.print(f"choice text: {text}")
+
+            # Extract the <think> ... </think> content (optional)
+            think_match = re.search(r"<think>(.+?)</think>", text, re.DOTALL)
+
+            if not think_match:
+                console.print("Error: could not find <think> block in the response")
+                continue
+
+            thought_content = think_match.group(1).strip()
+            console.print(f"parsed thought: {thought_content}")
+
+            # Extract the <answer> ... </answer> content
+            answer_match = re.search(r"<answer>(.+?)</answer>", text, re.DOTALL)
+            if not answer_match:
+                console.print("Error: could not find <answer> block in the response")
+                continue
+
+            answer_text = answer_match.group(1).strip()
+
+            # Try to parse the JSON content from the <answer> block
+            try:
+                obj = repair_json(answer_text, return_objects=True)
+                action = V1Action.model_validate(obj)
+                output.append(ReasonedAction(action=action, reason=thought_content))
+            except Exception as e:
+                console.print("Error parsing action: ", e)
+                continue
+
+        if not output:
+            raise ValueError("No valid actions found in the response")
+
+        return output
 
     def _select_action(self, actions: List[ReasonedAction]) -> ReasonedAction:
         console.print("action options: ", style="white")

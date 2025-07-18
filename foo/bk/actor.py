@@ -16,7 +16,7 @@ from chatmux.openai import (
     UserMessageContentPart,
 )
 from json_repair import repair_json
-from nebu import V1EnvVar
+from nebulous import V1EnvVar
 from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON

@@ -8,12 +8,15 @@ import requests
 from agentcore.models import V1UserProfile
 from agentdesk import Desktop
 from devicebay import Device
-from nebu import V1EnvVar
+from nebulous import V1EnvVar
 from orign.config import GlobalConfig, ServerConfig
 from pydantic import BaseModel
 from rich.console import Console
 from rich.json import JSON
 from skillpacks.reviewable import AnnotationReviewable, ReviewerType
+from surfkit.agent import TaskAgent
+from surfkit.auth.util import get_user_info
+from surfkit.skill import Skill
 from taskara import Task, TaskStatus
 from taskara.server.models import V1TaskUpdate
 from tenacity import (
@@ -22,10 +25,6 @@ from tenacity import (
     stop_after_attempt,
 )
 from toolfuse.util import AgentUtils
-
-from surfkit.agent import TaskAgent
-from surfkit.auth.util import get_user_info
-from surfkit.skill import Skill
 
 from .actor import Actor
 from .actor_utils import Step, create_actor_prompt_for_sft
@@ -75,7 +74,7 @@ class Foo(TaskAgent):
         """
         print("\nlearning task: ", task.id, flush=True)
         print("with user: ", user.model_dump(), flush=True)
-        from nebu import Namespace
+        from nebulous import Namespace
 
         from .unsloth_trainer import TrainingRequest, UnslothSFT
 
@@ -333,7 +332,9 @@ class Foo(TaskAgent):
                         note = reviewable.value
                         note_best = note
                         for review in reviewable.reviews:
-                            console.print("\nnote review: ", review.to_v1().model_dump())
+                            console.print(
+                                "\nnote review: ", review.to_v1().model_dump()
+                            )
                             if review.correction and review.reviewer_type in [
                                 "human",
                                 "user",
@@ -654,7 +655,7 @@ class Foo(TaskAgent):
         Returns:
             Task: The task
         """
-        from nebu import Namespace
+        from nebulous import Namespace
 
         print("creating namespace...")
         Namespace("agentsea", owner="agentsea")
@@ -822,7 +823,7 @@ class Foo(TaskAgent):
             console.print("taking action...", style="white")
             action_start_time = time.time()
 
-            step = actor.act(task, device, history) # type: ignore
+            step = actor.act(task, device, history)  # type: ignore
             action_end_time = time.time()
             console.print(
                 f"Actor took {action_end_time - action_start_time} seconds",
@@ -859,7 +860,11 @@ class Foo(TaskAgent):
                 result=step.result,
                 agent_id=self.name(),
                 model=step.model_id,
-                reviewables=[reviewable_reason, reviewable_description, reviewable_note],
+                reviewables=[
+                    reviewable_reason,
+                    reviewable_description,
+                    reviewable_note,
+                ],
             )
             record_action_end_time = time.time()
             console.print(

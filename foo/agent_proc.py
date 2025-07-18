@@ -18,7 +18,7 @@ from chatmux.openai import (
 )
 from devicebay import Device
 from json_repair import repair_json
-from nebu import V1EnvVar
+from nebulous import V1EnvVar
 from orign import Message, Processor, processor
 from PIL import Image
 from pydantic import BaseModel

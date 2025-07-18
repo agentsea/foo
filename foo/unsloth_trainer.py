@@ -9,11 +9,11 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from nebu import Message, Processor, processor
-from nebu.config import GlobalConfig as NebuGlobalConfig
-from nebu.containers.models import V1EnvVar
-from nebu.errors import RetriableError
-from nebu.processors.models import (
+from nebulous import Message, Processor, processor
+from nebulous.config import GlobalConfig as NebuGlobalConfig
+from nebulous.containers.models import V1EnvVar
+from nebulous.errors import RetriableError
+from nebulous.processors.models import (
     V1Scale,
     V1ScaleDown,
     V1ScaleUp,
@@ -23,14 +23,14 @@ from orign import V1TrainingStatus, find_latest_checkpoint
 from pydantic import BaseModel
 
 BASE_MODEL_ID = "unsloth/Qwen2.5-VL-32B-Instruct"
-ADAPTER_DIR = "/nebu/cache/adapters"
+ADAPTER_DIR = "/nebulous/cache/adapters"
 MAX_LOADED_ADAPTERS = 4
 
 # --- LRU Disk Cache Management ---
-LRU_METADATA_FILE = "/nebu/cache/lru_disk_cache.json"
+LRU_METADATA_FILE = "/nebulous/cache/lru_disk_cache.json"
 ADAPTER_CACHE_DIR_BASE = ADAPTER_DIR
 SFT_RUNS_DIR_BASE = "./runs"  # Relative to CWD
-LRU_LOCK_FILE = "/nebu/cache/lru_disk_cache.lock"  # Lock file for metadata
+LRU_LOCK_FILE = "/nebulous/cache/lru_disk_cache.lock"  # Lock file for metadata
 
 DEFAULT_MAX_ADAPTER_STORAGE_MB = 100 * 1024  # 100 GB
 DEFAULT_MAX_SFTRUN_STORAGE_MB = 100 * 1024  # 100 GB
@@ -477,7 +477,7 @@ def init():
 
     from unsloth import FastVisionModel  # type: ignore # isort: skip
     import torch  # type: ignore  # type: ignore
-    from nebu import Cache  # type: ignore
+    from nebulous import Cache  # type: ignore
     from orign import V1Adapter
     from peft import LoraConfig, PeftModel  # type: ignore  # noqa: F401
     from unsloth_zoo.peft_utils import get_peft_regex  # type: ignore
@@ -1140,7 +1140,7 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
     import requests
     import torch  # type: ignore
     from chatmux import oai_to_unsloth
-    from nebu import (
+    from nebulous import (
         Bucket,
         ContainerConfig,
         V1ResourceReference,
@@ -1197,7 +1197,7 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
         raise ValueError("Could not determine adapter namespace")
 
     # Define local and bucket paths
-    # ADAPTER_DIR is global: /nebu/cache/adapters
+    # ADAPTER_DIR is global: /nebulous/cache/adapters
     local_adapter_weights_dir_for_current_adapter = os.path.join(
         ADAPTER_DIR, adapter_name
     )

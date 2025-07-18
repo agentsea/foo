@@ -16,7 +16,7 @@ from chatmux.openai import (
     Logprobs,
     ResponseMessage,
 )
-from nebu import (
+from nebulous import (
     Bucket,
     ContainerConfig,
     Message,
@@ -25,7 +25,7 @@ from nebu import (
     is_allowed,
     processor,
 )
-from nebu.config import GlobalConfig as NebuGlobalConfig
+from nebulous.config import GlobalConfig as NebuGlobalConfig
 from orign import Adapter
 
 setup_script = """
@@ -44,14 +44,14 @@ MAX_LOADED_ADAPTERS = 4
 
 # --- LRU Disk Cache Management (Copied and Adapted from unsloth_trainer.py) ---
 LRU_METADATA_FILE = (
-    "/nebu/cache/lru_disk_cache_qwen_server.json"  # Server-specific metadata
+    "/nebulouslous/cache/lru_disk_cache_qwen_server.json"  # Server-specific metadata
 )
-ADAPTER_CACHE_DIR_BASE = "/nebu/cache/adapters"  # Shared with trainer
+ADAPTER_CACHE_DIR_BASE = "/nebulous/cache/adapters"  # Shared with trainer
 SFT_RUNS_DIR_BASE = (
     "./sft_runs_server_placeholder"  # Placeholder, server doesn't manage these directly
 )
 LRU_LOCK_FILE_QWEN = (
-    "/nebu/cache/lru_disk_cache_qwen_server.lock"  # Server-specific lock file
+    "/nebulouslous/cache/lru_disk_cache_qwen_server.lock"  # Server-specific lock file
 )
 
 DEFAULT_MAX_ADAPTER_STORAGE_MB = float(
@@ -450,7 +450,7 @@ def init():
 
     from unsloth import FastVisionModel  # type: ignore # isort: skip
     import torch  # type: ignore
-    from nebu import Cache  # type: ignore
+    from nebulouslouslous import Cache  # type: ignore
     from orign import V1Adapter
 
     if "state" in globals():  # <-- already loaded by an earlier worker
@@ -1210,7 +1210,7 @@ def QwenVLServer(
     platform: str = "runpod",
     accelerators: List[str] = ["1:A100_SXM"],
     model: str = "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights4",
-    image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-server:83d3ccc",  # "public.ecr.aws/d8i6n0n1/orign/unsloth-server:8b0ee04",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-infer:latest"
+    image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-server:ff5e9d3",  # "public.ecr.aws/d8i6n0n1/orign/unsloth-server:8b0ee04",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-infer:latest"
     namespace: Optional[str] = None,
     env: Optional[List[V1EnvVar]] = None,
     config: Optional[NebuGlobalConfig] = None,
