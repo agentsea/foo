@@ -1566,7 +1566,7 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
             model_uri=adapter_weights_bucket_uri,  # URI now points to the adapter weights in the bucket
             checkpoint_uri=checkpoint_uri_for_adapter,  # URI now points to the specific latest checkpoint
             owner=training_request.owner or message.user_id,  # type: ignore
-            base_model=training_request.model,  # This is the original base model ID like "unsloth/Qwen2.5-VL-32B-Instruct"
+            base_model="unsloth/Qwen2.5-VL-32B-Instruct",  # base_model=training_request.model,  # This is the original base model ID like "unsloth/Qwen2.5-VL-32B-Instruct"
             epochs_trained=final_epochs_trained,
             examples_trained=(
                 adapter_resource.examples_trained if adapter_resource else 0
@@ -1654,7 +1654,7 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
 def UnslothSFT(
     platform: str = "runpod",
     accelerators: List[str] = ["1:H100_SXM"],
-    image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-trainer:8b0ee04",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-train:latest"
+    image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-server:2504123",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-train:latest"
     scale: V1Scale = scale,
     namespace: Optional[str] = None,
     env: Optional[List[V1EnvVar]] = None,
