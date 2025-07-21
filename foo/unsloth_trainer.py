@@ -1566,7 +1566,7 @@ def train_unsloth_sft(message: Message[TrainingRequest]) -> TrainingResponse:
             model_uri=adapter_weights_bucket_uri,  # URI now points to the adapter weights in the bucket
             checkpoint_uri=checkpoint_uri_for_adapter,  # URI now points to the specific latest checkpoint
             owner=training_request.owner or message.user_id,  # type: ignore
-            base_model="unsloth/Qwen2.5-VL-32B-Instruct",  # base_model=training_request.model,  # This is the original base model ID like "unsloth/Qwen2.5-VL-32B-Instruct"
+            base_model=training_request.model,  # This is the original base model ID like "unsloth/Qwen2.5-VL-32B-Instruct"
             epochs_trained=final_epochs_trained,
             examples_trained=(
                 adapter_resource.examples_trained if adapter_resource else 0
