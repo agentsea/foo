@@ -44,14 +44,14 @@ MAX_LOADED_ADAPTERS = 4
 
 # --- LRU Disk Cache Management (Copied and Adapted from unsloth_trainer.py) ---
 LRU_METADATA_FILE = (
-    "/nebulouslous/cache/lru_disk_cache_qwen_server.json"  # Server-specific metadata
+    "/nebulous/cache/lru_disk_cache_qwen_server.json"  # Server-specific metadata
 )
 ADAPTER_CACHE_DIR_BASE = "/nebulous/cache/adapters"  # Shared with trainer
 SFT_RUNS_DIR_BASE = (
     "./sft_runs_server_placeholder"  # Placeholder, server doesn't manage these directly
 )
 LRU_LOCK_FILE_QWEN = (
-    "/nebulouslous/cache/lru_disk_cache_qwen_server.lock"  # Server-specific lock file
+    "/nebulous/cache/lru_disk_cache_qwen_server.lock"  # Server-specific lock file
 )
 
 DEFAULT_MAX_ADAPTER_STORAGE_MB = float(
@@ -960,7 +960,7 @@ def infer_qwen_vl(
     if not content:
         raise ValueError("No content provided")
 
-    load_adapter = content.model != "" and content.model != BASE_MODEL_ID
+    load_adapter = False  # content.model != "" and content.model != BASE_MODEL_ID
     print("load_adapter", load_adapter)
 
     if load_adapter:
