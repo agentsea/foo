@@ -450,7 +450,7 @@ def init():
 
     from unsloth import FastVisionModel  # type: ignore # isort: skip
     import torch  # type: ignore
-    from nebulouslouslous import Cache  # type: ignore
+    from nebulous import Cache  # type: ignore
     from orign import V1Adapter
 
     if "state" in globals():  # <-- already loaded by an earlier worker
