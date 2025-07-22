@@ -67,7 +67,7 @@ def init():
         time_start_adapter_load = time.time()
 
         # Download adapter locally first to ensure correct naming
-        local_adapter_path = f"./{adapter_name.replace('/', '_')}"
+        local_adapter_path = f"./{adapter_name.replace('/', '_').replace('.', '_')}"
         print(f"Downloading adapter '{adapter_name}' to '{local_adapter_path}'...")
         snapshot_download(repo_id=adapter_name, local_dir=local_adapter_path)
         print("Adapter downloaded.")
