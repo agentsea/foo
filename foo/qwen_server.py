@@ -74,6 +74,7 @@ _lru_disk_metadata = {"adapters": [], "sft_runs": []}
 
 
 def _acquire_lock(lock_file_path: str) -> Optional[int]:
+    os.makedirs(os.path.dirname(lock_file_path), exist_ok=True)
     lock_fd = os.open(lock_file_path, os.O_RDWR | os.O_CREAT | os.O_TRUNC)
     try:
         fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
