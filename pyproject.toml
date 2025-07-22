@@ -18,6 +18,7 @@ dependencies = [
     "typer>=0.9.4",
     "orign==0.2.143",
     "langchain-community>=0.3.21",
+    "huggingface-hub>=0.30.2",
 ]
 
 [dependency-groups]

@@ -25,6 +25,8 @@ def init():
     import gc
     import os
 
+    from huggingface_hub import snapshot_download
+
     from unsloth import FastVisionModel  # type: ignore # isort: skip
     import torch  # type: ignore
 
@@ -59,10 +61,18 @@ def init():
             max_seq_length=32_768,
         )
         print(f"Loaded base model in {time.time() - time_start_load} seconds")
+        print(f"Loaded base model of type: {type(base_model)}")
 
         print(f"Loading adapter: {adapter_name}")
         time_start_adapter_load = time.time()
-        base_model.load_adapter(adapter_name)
+
+        # Download adapter locally first to ensure correct naming
+        local_adapter_path = f"./{adapter_name.replace('/', '_')}"
+        print(f"Downloading adapter '{adapter_name}' to '{local_adapter_path}'...")
+        snapshot_download(repo_id=adapter_name, local_dir=local_adapter_path)
+        print("Adapter downloaded.")
+
+        base_model.load_adapter(local_adapter_path, adapter_name=adapter_name)
         base_model.set_adapter(adapter_name)
         print(
             f"Loaded and set adapter in {time.time() - time_start_adapter_load} seconds"
