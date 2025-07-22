@@ -17,6 +17,7 @@ dependencies = [
     "surfkit==0.1.427",
     "typer>=0.9.4",
     "orign==0.2.143",
+    "langchain-community>=0.3.21",
 ]
 
 [dependency-groups]
