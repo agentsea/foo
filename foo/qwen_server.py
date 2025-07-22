@@ -1088,7 +1088,13 @@ def infer_qwen_vl(
         if adapters_present_in_config:
             if hasattr(state.base_model, "disable_adapters"):
                 print("[AdapterCycle] Calling disable_adapters().")
-                state.base_model.disable_adapters()
+                try:
+                    state.base_model.disable_adapters()
+                except Exception as e:
+                    print(
+                        f"[AdapterCycle] Error calling disable_adapters(): {e} -- skipping"
+                    )
+                    pass
             elif hasattr(state.base_model, "set_adapter"):  # Robust PEFT way
                 print("[AdapterCycle] Calling set_adapter([]).")
                 state.base_model.set_adapter([])
