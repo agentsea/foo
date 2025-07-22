@@ -63,7 +63,7 @@ pip install surfkit chatmux orign rich
 
 @processor(image="python:3.11-slim", platform="runpod", setup_script=setup)  # type: ignore
 def agent(message: Message[V1Task]) -> V1Task:
-    from .qwen_server import QwenVLServer
+    from .qwen_server_simple import QwenVLServer
 
     print(message)
 

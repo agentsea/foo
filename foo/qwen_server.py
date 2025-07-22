@@ -39,7 +39,7 @@ pip install -e git+https://github.com/pbarker/unsloth-zoo.git#egg=unsloth_zoo
 pip install -e git+https://github.com/pbarker/unsloth.git#egg=unsloth
 """
 
-BASE_MODEL_ID = "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights4"
+BASE_MODEL_ID = "unsloth/Qwen2.5-VL-32B-Instruct"  # "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights4"
 MAX_LOADED_ADAPTERS = 4
 
 # --- LRU Disk Cache Management (Copied and Adapted from unsloth_trainer.py) ---
@@ -1216,7 +1216,7 @@ def infer_qwen_vl(
 def QwenVLServer(
     platform: str = "runpod",
     accelerators: List[str] = ["1:A100_SXM"],
-    model: str = "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights4",
+    model: str = "unsloth/Qwen2.5-VL-32B-Instruct",  # "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights4",
     image: str = "public.ecr.aws/d8i6n0n1/orign/unsloth-server:6671ad5",  # "public.ecr.aws/d8i6n0n1/orign/unsloth-server:8b0ee04",  # "us-docker.pkg.dev/agentsea-dev/orign/unsloth-infer:latest"
     namespace: Optional[str] = None,
     env: Optional[List[V1EnvVar]] = None,
