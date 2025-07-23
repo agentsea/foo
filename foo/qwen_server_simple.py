@@ -50,21 +50,8 @@ def init():
         print("--- end nvidia-smi before load ---")
         time_start_load = time.time()
 
-        base_model_id = "unsloth/Qwen2.5-VL-32B-Instruct"
+        # base_model_id = "unsloth/Qwen2.5-VL-32B-Instruct"
         adapter_name = "agentsea/Qwen2.5-VL-32B-Instruct-CARL-Gflights4"
-
-        base_model, model_processor = FastVisionModel.from_pretrained(
-            base_model_id,
-            load_in_4bit=False,
-            # use_fast=True,
-            dtype=torch.bfloat16,
-            max_seq_length=32_768,
-        )
-        print(f"Loaded base model in {time.time() - time_start_load} seconds")
-        print(f"Loaded base model of type: {type(base_model)}")
-
-        print(f"Loading adapter: {adapter_name}")
-        time_start_adapter_load = time.time()
 
         # Create a sanitized name for PEFT/PyTorch, which disallows '.' or '/'
         sanitized_adapter_name = adapter_name.replace("/", "_").replace(".", "_")
@@ -75,11 +62,22 @@ def init():
         snapshot_download(repo_id=adapter_name, local_dir=local_adapter_path)
         print("Adapter downloaded.")
 
-        base_model.load_adapter(local_adapter_path, adapter_name=sanitized_adapter_name)
-        base_model.set_adapter(sanitized_adapter_name)
-        print(
-            f"Loaded and set adapter in {time.time() - time_start_adapter_load} seconds"
+        base_model, model_processor = FastVisionModel.from_pretrained(
+            local_adapter_path,
+            load_in_4bit=False,
+            # use_fast=True,
+            dtype=torch.bfloat16,
+            max_seq_length=32_768,
         )
+        print(f"Loaded base model in {time.time() - time_start_load} seconds")
+        print(f"Loaded base model of type: {type(base_model)}")
+
+        # base_model.load_adapter(local_adapter_path, adapter_name=sanitized_adapter_name)
+        # base_model.set_adapter(sanitized_adapter_name)
+        # print(f"Active adapters: {base_model.active_adapters}")
+        # print(
+        #     f"Loaded and set adapter in {time.time() - time_start_adapter_load} seconds"
+        # )
 
         print("--- nvidia-smi after load ---")
         os.system("nvidia-smi")
