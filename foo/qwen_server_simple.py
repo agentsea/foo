@@ -66,14 +66,17 @@ def init():
         print(f"Loading adapter: {adapter_name}")
         time_start_adapter_load = time.time()
 
+        # Create a sanitized name for PEFT/PyTorch, which disallows '.' or '/'
+        sanitized_adapter_name = adapter_name.replace("/", "_").replace(".", "_")
+
         # Download adapter locally first to ensure correct naming
-        local_adapter_path = f"./{adapter_name.replace('/', '_').replace('.', '_')}"
+        local_adapter_path = f"./{sanitized_adapter_name}"
         print(f"Downloading adapter '{adapter_name}' to '{local_adapter_path}'...")
         snapshot_download(repo_id=adapter_name, local_dir=local_adapter_path)
         print("Adapter downloaded.")
 
-        base_model.load_adapter(local_adapter_path, adapter_name=adapter_name)
-        base_model.set_adapter(adapter_name)
+        base_model.load_adapter(local_adapter_path, adapter_name=sanitized_adapter_name)
+        base_model.set_adapter(sanitized_adapter_name)
         print(
             f"Loaded and set adapter in {time.time() - time_start_adapter_load} seconds"
         )
